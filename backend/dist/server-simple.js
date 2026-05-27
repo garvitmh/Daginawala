@@ -1067,58 +1067,9 @@ app.post('/api/making-groups/:id/remove-products', async (req, res) => {
             },
             data: {
                 makingGroupId: null,
-                makingChargeType: 'per_gram', // Revert to default
+                // DO NOT update any other fields
             },
         });
-
-        // Recalculate price in background
-        if (result.count > 0) {
-            setImmediate(async () => {
-                try {
-                    console.log(`[REMOVE] Triggering bulk price recalculation for removed products...`);
-                    // We need the products that actually matched the condition
-                    const removedProducts = await prisma.product.findMany({
-                        where: { id: { in: productIds }, makingGroupId: null }
-                    });
-                    
-                    if (removedProducts.length > 0) {
-                        const priceResults = await pricing_service_1.PricingService.calculateBulkPrices(shop.id, removedProducts.map(p => p.id));
-                        
-                        if (priceResults.length > 0) {
-                            const shopifyUpdates = priceResults.map(p => {
-                               const prod = removedProducts.find(x => x.id === p.productId);
-                               return {
-                                   variantId: prod.shopifyVariantId,
-                                   price: p.newPrice,
-                                   breakdown: p.breakdown
-                               };
-                            });
-                            
-                            // update local database
-                            for (const result of priceResults) {
-                               await prisma.product.update({
-                                  where: { id: result.productId },
-                                  data: {
-                                      currentPrice: result.newPrice,
-                                      lastCalculatedPrice: result.newPrice,
-                                      lastPushedPrice: result.newPrice,
-                                      lastPushedAt: new Date()
-                                  }
-                               });
-                            }
-
-                            // push updates to Shopify
-                            console.log(`[REMOVE] Pushing updated prices to Shopify...`);
-                            const shopifyService = await shopify_service_1.ShopifyService.forShop(shop.domain);
-                            await shopifyService.updateVariantPricesBatch(shopifyUpdates);
-                            console.log(`[REMOVE] ✅ Finished updating prices for removed products.`);
-                        }
-                    }
-                } catch (e) {
-                   console.error("[REMOVE] Failed to recalculate prices after remove-products", e);
-                }
-            });
-        }
         console.log(`✅ Removed ${result.count} products from making group: ${makingGroup.name}`);
         res.json({
             success: true,

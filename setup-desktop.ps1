@@ -26,4 +26,5 @@ npx prisma generate
 npx prisma migrate dev --name init_desktop
 
 Write-Host "✅ Desktop Setup Complete!"
+Write-Host "⚠️  IMPORTANT: Please open and configure 'backend\.env' and 'frontend\.env' with your rotated Shopify API credentials."
 Write-Host "Run 'GeminiDesktop.bat' to start the app."

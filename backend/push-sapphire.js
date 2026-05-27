@@ -1,9 +1,16 @@
 const { PrismaClient } = require('@prisma/client');
 const axios = require('axios');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 const prisma = new PrismaClient();
-const SHOPIFY_STORE = 'daginawala11.myshopify.com';
-const SHOPIFY_ACCESS_TOKEN = 'your_shopify_access_token_here';
+const SHOPIFY_STORE = process.env.SHOPIFY_STORE || 'daginawala11.myshopify.com';
+const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
+
+if (!SHOPIFY_ACCESS_TOKEN) {
+    console.error('❌ Error: SHOPIFY_ACCESS_TOKEN is not defined in the environment.');
+    process.exit(1);
+}
 
 async function pushYellowSapphire() {
     try {
