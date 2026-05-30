@@ -229,6 +229,17 @@ model Product {
   autoGrossGoldWeight           Boolean           @default(false)
   makingGroupId                 String?
   priceBreakdownHtml            String?
+  huid                          String?
+  diamondCertified              Boolean           @default(false)
+  diamondLab                    String?
+  diamondCertificateId          String?
+  pearlType                     String?
+  pearlPieces                   Int?
+  pearlWeight                   Float?
+  pearlQuality                  String?
+  ringSize                      String?
+  bangleSize                    String?
+  jewelryLength                 String?
   priceHistory                  PriceHistory[]
   makingGroup                   MakingGroup?      @relation(fields: [makingGroupId], references: [id])
   shop                          Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)

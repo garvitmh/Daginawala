@@ -1354,6 +1354,18 @@ const PRODUCT_TEMPLATE_COLUMNS = [
     'Labour From',
     'Wastage From',
     'Wastage Value',
+    // Sizing, HUID, Certifications, Pearls
+    'HUID',
+    'Diamond Certified',
+    'Diamond Lab',
+    'Diamond Certificate ID',
+    'Pearl Type',
+    'Pearl Pieces',
+    'Pearl Weight (ct)',
+    'Pearl Quality',
+    'Ring Size',
+    'Bangle Size',
+    'Jewelry Length',
     // System / Read-only
     'Current Price',
     'Last Synced'
@@ -1404,6 +1416,17 @@ app.get('/api/products/template', async (req, res) => {
             'Discount Type': 'flat',
             'Discount Value': 0,
             'GST %': 3.0,
+            'HUID': 'H12345',
+            'Diamond Certified': 'TRUE',
+            'Diamond Lab': 'GIA',
+            'Diamond Certificate ID': 'GIA987654321',
+            'Pearl Type': 'South Sea',
+            'Pearl Pieces': 12,
+            'Pearl Weight (ct)': 3.5,
+            'Pearl Quality': 'AAA',
+            'Ring Size': '14',
+            'Bangle Size': '2.4',
+            'Jewelry Length': '18 inches',
             'Current Price': '(Read-only)',
             'Last Synced': '2023-01-01'
         };
@@ -1491,6 +1514,18 @@ app.get('/api/products/export', async (req, res) => {
             set('Labour From', p.labourFromWeight);
             set('Wastage From', p.wastageType);
             set('Wastage Value', p.wastageValue);
+            // Sizing, HUID, Certifications, Pearls
+            set('HUID', p.huid);
+            set('Diamond Certified', p.diamondCertified ? 'TRUE' : 'FALSE');
+            set('Diamond Lab', p.diamondLab);
+            set('Diamond Certificate ID', p.diamondCertificateId);
+            set('Pearl Type', p.pearlType);
+            set('Pearl Pieces', p.pearlPieces);
+            set('Pearl Weight (ct)', p.pearlWeight);
+            set('Pearl Quality', p.pearlQuality);
+            set('Ring Size', p.ringSize);
+            set('Bangle Size', p.bangleSize);
+            set('Jewelry Length', p.jewelryLength);
             // System
             set('Current Price', p.currentPrice);
             set('Last Synced', p.lastPushedAt ? new Date(p.lastPushedAt).toISOString().split('T')[0] : '');
@@ -1703,6 +1738,43 @@ app.post('/api/products/import', upload.single('file'), async (req, res) => {
                     updateData.wastageType = String(wastageFrom).trim().toLowerCase();
                 if (wastageValue !== undefined)
                     updateData.wastageValue = toNum(wastageValue);
+
+                // Sizing, HUID, Certifications, Pearls
+                const huid = getColumnValue(row, 'HUID', 'huid');
+                const diamondCertified = getColumnValue(row, 'Diamond Certified', 'diamondCertified');
+                const diamondLab = getColumnValue(row, 'Diamond Lab', 'diamondLab');
+                const diamondCertificateId = getColumnValue(row, 'Diamond Certificate ID', 'diamondCertificateId');
+                const pearlType = getColumnValue(row, 'Pearl Type', 'pearlType');
+                const pearlPieces = getColumnValue(row, 'Pearl Pieces', 'pearlPieces');
+                const pearlWeight = getColumnValue(row, 'Pearl Weight (ct)', 'pearlWeight');
+                const pearlQuality = getColumnValue(row, 'Pearl Quality', 'pearlQuality');
+                const ringSize = getColumnValue(row, 'Ring Size', 'ringSize');
+                const bangleSize = getColumnValue(row, 'Bangle Size', 'bangleSize');
+                const jewelryLength = getColumnValue(row, 'Jewelry Length', 'jewelryLength');
+
+                if (huid !== undefined)
+                    updateData.huid = huid ? String(huid).trim() : null;
+                if (diamondCertified !== undefined)
+                    updateData.diamondCertified = String(diamondCertified).toUpperCase() === 'TRUE';
+                if (diamondLab !== undefined)
+                    updateData.diamondLab = diamondLab ? String(diamondLab).trim() : null;
+                if (diamondCertificateId !== undefined)
+                    updateData.diamondCertificateId = diamondCertificateId ? String(diamondCertificateId).trim() : null;
+                if (pearlType !== undefined)
+                    updateData.pearlType = pearlType ? String(pearlType).trim() : null;
+                if (pearlPieces !== undefined)
+                    updateData.pearlPieces = toInt(pearlPieces);
+                if (pearlWeight !== undefined)
+                    updateData.pearlWeight = toNum(pearlWeight);
+                if (pearlQuality !== undefined)
+                    updateData.pearlQuality = pearlQuality ? String(pearlQuality).trim() : null;
+                if (ringSize !== undefined)
+                    updateData.ringSize = ringSize ? String(ringSize).trim() : null;
+                if (bangleSize !== undefined)
+                    updateData.bangleSize = bangleSize ? String(bangleSize).trim() : null;
+                if (jewelryLength !== undefined)
+                    updateData.jewelryLength = jewelryLength ? String(jewelryLength).trim() : null;
+
                 // Gemstone fields (legacy support)
                 if (row.gemstoneType !== undefined)
                     updateData.gemstoneType = row.gemstoneType;

@@ -227,6 +227,14 @@ class ShopifyService {
         
         const executeUpdate = async () => {
             try {
+                // Fetch product with jewelry fields to sync metafields
+                let product = null;
+                try {
+                    product = await prisma.product.findUnique({ where: { shopifyVariantId: variantId } });
+                } catch (dbErr) {
+                    console.error('[SHOPIFY] Error fetching product for metafields sync:', dbErr.message);
+                }
+
                 // Ensure breakdown is an object if possible
                 if (typeof breakdown === 'string') {
                     try {
@@ -268,13 +276,35 @@ class ShopifyService {
                             }
                         }
                     `;
+                    const mfs = [
+                        { ownerId: gid, namespace: "gemini", key: "price_breakdown", value: breakdownJson, type: "json" },
+                        { ownerId: gid, namespace: "custom", key: "price_breakdown", value: breakdownJson, type: "json" },
+                        { ownerId: gid, namespace: "custom", key: "code_form",       value: breakdownJson, type: "json" },
+                        { ownerId: gid, namespace: "custom", key: "makingcharges",   value: makingChargesFormatted, type: "number_decimal" }
+                    ];
+
+                    if (product) {
+                        mfs.push(
+                            { ownerId: gid, namespace: "custom", key: "huid", value: product.huid || "", type: "single_line_text_field" },
+                            { ownerId: gid, namespace: "custom", key: "diamond_certified", value: product.diamondCertified ? "true" : "false", type: "boolean" },
+                            { ownerId: gid, namespace: "custom", key: "diamond_lab", value: product.diamondLab || "", type: "single_line_text_field" },
+                            { ownerId: gid, namespace: "custom", key: "diamond_certificate_id", value: product.diamondCertificateId || "", type: "single_line_text_field" },
+                            { ownerId: gid, namespace: "custom", key: "pearl_type", value: product.pearlType || "", type: "single_line_text_field" },
+                            { ownerId: gid, namespace: "custom", key: "pearl_quality", value: product.pearlQuality || "", type: "single_line_text_field" },
+                            { ownerId: gid, namespace: "custom", key: "ring_size", value: product.ringSize || "", type: "single_line_text_field" },
+                            { ownerId: gid, namespace: "custom", key: "bangle_size", value: product.bangleSize || "", type: "single_line_text_field" },
+                            { ownerId: gid, namespace: "custom", key: "jewelry_length", value: product.jewelryLength || "", type: "single_line_text_field" }
+                        );
+                        if (product.pearlPieces !== null && product.pearlPieces !== undefined) {
+                            mfs.push({ ownerId: gid, namespace: "custom", key: "pearl_pieces", value: product.pearlPieces.toString(), type: "number_integer" });
+                        }
+                        if (product.pearlWeight !== null && product.pearlWeight !== undefined) {
+                            mfs.push({ ownerId: gid, namespace: "custom", key: "pearl_weight", value: product.pearlWeight.toString(), type: "number_decimal" });
+                        }
+                    }
+
                     const metafieldVariables = {
-                        metafields: [
-                            { ownerId: gid, namespace: "gemini", key: "price_breakdown", value: breakdownJson, type: "json" },
-                            { ownerId: gid, namespace: "custom", key: "price_breakdown", value: breakdownJson, type: "json" },
-                            { ownerId: gid, namespace: "custom", key: "code_form",       value: breakdownJson, type: "json" },
-                            { ownerId: gid, namespace: "custom", key: "makingcharges",   value: makingChargesFormatted, type: "number_decimal" }
-                        ]
+                        metafields: mfs
                     };
                     const mfRes = await axios_1.default.post(
                         `https://${this.domain}/admin/api/2024-01/graphql.json`,

@@ -680,7 +680,18 @@ router.post('/import', async (req, res) => {
                     makingChargeValue: resolvedMakingChargeValue,
                     makingDiscountType: makingDiscountType,
                     makingDiscountValue: makingDiscountValue,
-                    makingGroupId: resolvedMakingGroupId
+                    makingGroupId: resolvedMakingGroupId,
+                    huid: normalizedRow['HUID'] !== undefined ? (normalizedRow['HUID'] ? String(normalizedRow['HUID']).trim() : null) : existingProduct.huid,
+                    diamondCertified: normalizedRow['Diamond Certified'] !== undefined ? (normalizedRow['Diamond Certified']?.toString().toUpperCase() === 'TRUE') : existingProduct.diamondCertified,
+                    diamondLab: normalizedRow['Diamond Lab'] !== undefined ? (normalizedRow['Diamond Lab'] ? String(normalizedRow['Diamond Lab']).trim() : null) : existingProduct.diamondLab,
+                    diamondCertificateId: normalizedRow['Diamond Certificate ID'] !== undefined ? (normalizedRow['Diamond Certificate ID'] ? String(normalizedRow['Diamond Certificate ID']).trim() : null) : existingProduct.diamondCertificateId,
+                    pearlType: normalizedRow['Pearl Type'] !== undefined ? (normalizedRow['Pearl Type'] ? String(normalizedRow['Pearl Type']).trim() : null) : existingProduct.pearlType,
+                    pearlPieces: normalizedRow['Pearl Pieces'] !== undefined ? (parseInt(normalizedRow['Pearl Pieces']) || null) : existingProduct.pearlPieces,
+                    pearlWeight: normalizedRow['Pearl Weight (ct)'] !== undefined ? (parseFloat(normalizedRow['Pearl Weight (ct)']) || null) : existingProduct.pearlWeight,
+                    pearlQuality: normalizedRow['Pearl Quality'] !== undefined ? (normalizedRow['Pearl Quality'] ? String(normalizedRow['Pearl Quality']).trim() : null) : existingProduct.pearlQuality,
+                    ringSize: normalizedRow['Ring Size'] !== undefined ? (normalizedRow['Ring Size'] ? String(normalizedRow['Ring Size']).trim() : null) : existingProduct.ringSize,
+                    bangleSize: normalizedRow['Bangle Size'] !== undefined ? (normalizedRow['Bangle Size'] ? String(normalizedRow['Bangle Size']).trim() : null) : existingProduct.bangleSize,
+                    jewelryLength: normalizedRow['Jewelry Length'] !== undefined ? (normalizedRow['Jewelry Length'] ? String(normalizedRow['Jewelry Length']).trim() : null) : existingProduct.jewelryLength
                 };
 
                 console.log(`[IMPORT] Final Update Data for ${SKU}:`, JSON.stringify({
@@ -995,6 +1006,18 @@ router.get('/export', async (req, res) => {
             row['Discount Type'] = p.discountType || 'none';
             row['Discount Value'] = p.discount || 0;
             row['GST %'] = p.gstPct || 3;
+            // Sizing, HUID, Certifications, Pearls
+            row['HUID'] = p.huid || '';
+            row['Diamond Certified'] = p.diamondCertified ? 'TRUE' : 'FALSE';
+            row['Diamond Lab'] = p.diamondLab || '';
+            row['Diamond Certificate ID'] = p.diamondCertificateId || '';
+            row['Pearl Type'] = p.pearlType || '';
+            row['Pearl Pieces'] = p.pearlPieces || '';
+            row['Pearl Weight (ct)'] = p.pearlWeight || '';
+            row['Pearl Quality'] = p.pearlQuality || '';
+            row['Ring Size'] = p.ringSize || '';
+            row['Bangle Size'] = p.bangleSize || '';
+            row['Jewelry Length'] = p.jewelryLength || '';
             row['Current Price'] = p.currentPrice || '';
             row['Last Synced'] = p.updatedAt.toISOString().split('T')[0];
             return row;
@@ -1008,7 +1031,11 @@ router.get('/export', async (req, res) => {
             'Stone 3: Used', 'Stone 3: Type', 'Stone 3: Shape', 'Stone 3: Quality', 'Stone 3: Color', 'Stone 3: Clarity', 'Stone 3: Cut', 'Stone 3: Weight (ct)', 'Stone 3: Pieces', 'Stone 3: Rate Type', 'Stone 3: Rate Value', 'Stone 3: Custom',
             'Enamel Color', 'Enamel Weight (g)', 'Enamel Discount Type', 'Enamel Discount Value',
             'Making Type', 'Making Value', 'Making Percentage', 'Making Discount Value', 'Making Discount %',
-            'Discount Type', 'Discount Value', 'GST %', 'Current Price', 'Last Synced'
+            'Discount Type', 'Discount Value', 'GST %', 
+            'HUID', 'Diamond Certified', 'Diamond Lab', 'Diamond Certificate ID', 
+            'Pearl Type', 'Pearl Pieces', 'Pearl Weight (ct)', 'Pearl Quality', 
+            'Ring Size', 'Bangle Size', 'Jewelry Length',
+            'Current Price', 'Last Synced'
         ];
 
         const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
