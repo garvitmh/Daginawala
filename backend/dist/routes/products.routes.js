@@ -625,6 +625,40 @@ router.post('/import', async (req, res) => {
                     makingDiscountValue = parseFloat(normalizedRow['Making Discount Value'] || 0);
                 }
 
+                // Resolve Making Group assignment from Excel column
+                let resolvedMakingGroupId = existingProduct.makingGroupId;
+                let resolvedMakingChargeType = makingType;
+                let resolvedMakingChargeValue = makingValue;
+
+                const excelMakingGroup = normalizedRow['Making Group'];
+                if (excelMakingGroup !== undefined) {
+                    const groupName = excelMakingGroup.toString().trim();
+                    if (groupName !== '') {
+                        const group = await prisma.makingGroup.findFirst({
+                            where: {
+                                shopId: shop.id,
+                                name: groupName
+                            }
+                        });
+                        if (group) {
+                            resolvedMakingGroupId = group.id;
+                            resolvedMakingChargeType = 'master';
+                            resolvedMakingChargeValue = group.value;
+                        } else {
+                            console.log(`[IMPORT] ERROR: Making Group "${groupName}" not found for SKU ${SKU}`);
+                            errors.push({ sku: SKU, error: `Making Group "${groupName}" not found. Please create it first.` });
+                            continue;
+                        }
+                    } else {
+                        // Empty cell means remove from making group and reset to default per_gram
+                        resolvedMakingGroupId = null;
+                        if (existingProduct.makingGroupId) {
+                            resolvedMakingChargeType = 'per_gram';
+                            resolvedMakingChargeValue = shopSettings?.defaultMakingChargeValue ?? 1500;
+                        }
+                    }
+                }
+
                 // Prepare final update data object
                 const updateData = {
                     status: normalizedRow['Status'] || existingProduct.status,
@@ -642,10 +676,11 @@ router.post('/import', async (req, res) => {
                     gstPct: parseFloat(normalizedRow['GST %'] || existingProduct.gstPct || shopSettings?.defaultGstPct || 3),
                     stoneWeightCarat: parseFloat(normalizedRow['Gemstone Weight (ct)'] || normalizedRow['Stone Weight (ct)'] || normalizedRow['Number of Psc'] || normalizedRow['stoneWeightCarat'] || 0),
                     stonePieces: parseInt(normalizedRow['Gemstone Pieces'] || normalizedRow['Stone Pieces'] || normalizedRow['Psc'] || normalizedRow['stonePieces'] || 0),
-                    makingChargeType: makingType,
-                    makingChargeValue: makingValue,
+                    makingChargeType: resolvedMakingChargeType,
+                    makingChargeValue: resolvedMakingChargeValue,
                     makingDiscountType: makingDiscountType,
-                    makingDiscountValue: makingDiscountValue
+                    makingDiscountValue: makingDiscountValue,
+                    makingGroupId: resolvedMakingGroupId
                 };
 
                 console.log(`[IMPORT] Final Update Data for ${SKU}:`, JSON.stringify({
@@ -810,6 +845,7 @@ router.get('/template', async (req, res) => {
             'Title': 'Gold Diamond Ring',
             'Status': 'active',
             'Collection': 'Rings',
+            'Making Group': 'Premium Gold Making',
 
             // Metal Information
             'Metal Type': 'gold',
@@ -922,6 +958,7 @@ router.get('/export', async (req, res) => {
                 Title: p.title || '',
                 Status: p.status || '',
                 Collection: p.makingGroup?.name || '',
+                'Making Group': p.makingGroup?.name || '',
                 'Metal Type': p.metal || '',
                 'Metal Purity': p.karat || '',
                 'Metal Weight (g)': p.weightGrams || '',
@@ -964,7 +1001,7 @@ router.get('/export', async (req, res) => {
         });
         // Define explicit headers to ensure order and visibility
         const headers = [
-            'SKU', 'Title', 'Status', 'Collection', 'Metal Type', 'Metal Purity', 
+            'SKU', 'Title', 'Status', 'Collection', 'Making Group', 'Metal Type', 'Metal Purity', 
             'Metal Weight (g)', 'Gross Weight (g)', 'Wastage %',
             'Stone 1: Used', 'Stone 1: Type', 'Stone 1: Shape', 'Stone 1: Quality', 'Stone 1: Color', 'Stone 1: Clarity', 'Stone 1: Cut', 'Stone 1: Weight (ct)', 'Stone 1: Pieces', 'Stone 1: Rate Type', 'Stone 1: Rate Value', 'Stone 1: Custom',
             'Stone 2: Used', 'Stone 2: Type', 'Stone 2: Shape', 'Stone 2: Quality', 'Stone 2: Color', 'Stone 2: Clarity', 'Stone 2: Cut', 'Stone 2: Weight (ct)', 'Stone 2: Pieces', 'Stone 2: Rate Type', 'Stone 2: Rate Value', 'Stone 2: Custom',

@@ -1317,6 +1317,7 @@ const PRODUCT_TEMPLATE_COLUMNS = [
     'Title',
     'Status',
     'Collection',
+    'Making Group',
     // Metal
     'Metal Type',
     'Metal Purity',
@@ -1378,6 +1379,7 @@ app.get('/api/products/template', async (req, res) => {
             Title: 'Gold Ring',
             Status: 'active',
             Collection: 'Rings',
+            'Making Group': 'Premium Gold Making',
             'Metal Type': 'gold',
             'Metal Purity': '22',
             'Metal Weight (g)': 5.5,
