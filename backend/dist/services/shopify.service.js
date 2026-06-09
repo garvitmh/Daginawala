@@ -642,6 +642,19 @@ class ShopifyService {
                 }
             });
             console.log(`Sync completed for shop ${shopId}`);
+            
+            // 5. Auto-trigger bulk price update after product sync completes
+            console.log(`Auto-triggering bulk price update after sync...`);
+            try {
+                const { BulkPriceUpdateService } = require('./bulkPriceUpdate.service');
+                await BulkPriceUpdateService.triggerUpdate({
+                    shopId,
+                    triggeredBy: 'auto_sync_after_import'
+                });
+                console.log(`✅ Bulk price update triggered successfully`);
+            } catch (bulkErr) {
+                console.error('⚠️ Failed to auto-trigger bulk price update after sync:', bulkErr.message);
+            }
         }
         catch (error) {
             console.error('Sync failed:', error);
