@@ -517,10 +517,17 @@ class ShopifyService {
                 data: { totalItems: products.length }
             });
             // 3. Process and Upsert
+            const existingVariantIds = new Set(
+                (await prisma.product.findMany({
+                    where: { shopId },
+                    select: { shopifyVariantId: true }
+                })).map(p => p.shopifyVariantId)
+            );
             let productsProcessed = 0;
             let variantsSynced = 0;
-            let duplicatesSkipped = 0;
-            let failed = 0;
+            let createdCount = 0;
+            let updatedCount = 0;
+            let failedCount = 0;
             // Feature: Deletion Sync
             // Collect valid Shopify Product IDs currently in Shopify
             const currentShopifyProductIds = new Set();
@@ -539,6 +546,7 @@ class ShopifyService {
                         try {
                             const price = variant?.price ? parseFloat(variant.price) : 0;
                             const variantId = variant?.id || `gid://shopify/ProductVariant/${p.id}`; // Fallback
+                            const isNew = !existingVariantIds.has(variantId);
                             // Safety check for duplicates is handled by upsert on unique shopifyVariantId
                             await prisma.product.upsert({
                                 where: { shopifyVariantId: variantId },
@@ -565,10 +573,16 @@ class ShopifyService {
                                 }
                             });
                             variantsSynced++;
+                            if (isNew) {
+                                createdCount++;
+                                existingVariantIds.add(variantId);
+                            } else {
+                                updatedCount++;
+                            }
                         }
                         catch (err) {
                             console.error(`Failed to upsert variant ${variant?.id} for product ${p.id}:`, err);
-                            failed++;
+                            failedCount++;
                         }
                     }
                     productsProcessed++;
@@ -603,13 +617,26 @@ class ShopifyService {
             else {
                 console.log('No stale products found. Local DB is in sync.');
             }
-            console.log(`✅ Sync Summary: ${productsProcessed} products processed, ${variantsSynced} variants synced, ${deletedCount} deleted`);
+            const counts = {
+                fetched: products.length,
+                created: createdCount,
+                updated: updatedCount,
+                deleted: deletedCount,
+                unchanged: 0
+            };
+            console.log(`✅ Sync Summary: ${productsProcessed} products processed, ${createdCount} created, ${updatedCount} updated, ${deletedCount} deleted, ${failedCount} failed`);
             // 4. Complete Job
             await prisma.job.update({
                 where: { id: job.id },
                 data: {
                     status: 'completed',
-                    result: JSON.stringify({ created: variantsSynced, failed, deleted: deletedCount }),
+                    result: JSON.stringify({
+                        counts,
+                        created: createdCount,
+                        updated: updatedCount,
+                        deleted: deletedCount,
+                        failed: failedCount
+                    }),
                     completedAt: new Date(),
                     processedItems: productsProcessed // Ensure final count is accurate
                 }
@@ -671,7 +698,7 @@ class ShopifyService {
                 }
             }
         `;
-            const response = await axios_1.default.post(`https://${ShopifyService.shopDomainEnv}/admin/api/2024-01/graphql.json`, { query, variables: { cursor } }, { headers: ShopifyService.getHeaders(this.accessToken) });
+            const response = await axios_1.default.post(`https://${this.domain}/admin/api/2024-01/graphql.json`, { query, variables: { cursor } }, { headers: ShopifyService.getHeaders(this.accessToken) });
             if (response.data.errors) {
                 throw new Error(JSON.stringify(response.data.errors));
             }

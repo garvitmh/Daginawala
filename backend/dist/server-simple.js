@@ -343,14 +343,17 @@ app.get('/api/sync/status', async (req, res) => {
         if (!shop) {
             return res.json({ job: null });
         }
-        // Try to get the latest sync job for this shop
-        const latestJob = await prisma.syncJob?.findFirst?.({
-            where: { shopId: shop.id },
+        // Get the most recent product_sync job
+        const latestJob = await prisma.job.findFirst({
+            where: {
+                shopId: shop.id,
+                jobType: 'product_sync'
+            },
             orderBy: { createdAt: 'desc' }
-        }).catch(() => null);
+        });
         res.json({ job: latestJob || null });
     } catch (error) {
-        // Gracefully return null if SyncJob model doesn't exist yet
+        console.error('Error fetching sync status in /api/sync/status:', error);
         res.json({ job: null });
     }
 });
@@ -1187,128 +1190,7 @@ app.post('/api/products/update-all-prices', async (req, res) => {
         res.status(500).json({ error: 'Failed to trigger bulk price update' });
     }
 });
-// Sync products from Shopify
-app.post('/api/products/sync', async (req, res) => {
-    try {
-        // Check if we have valid Shopify credentials
-        if (!SHOPIFY_ACCESS_TOKEN) {
-            return res.status(400).json({
-                error: 'Shopify credentials not configured',
-                message: 'Please set SHOPIFY_ACCESS_TOKEN in backend/.env to sync products'
-            });
-        }
-        const shop = req.context.shop;
-        if (!shop) {
-            return res.status(404).json({ error: 'Shop not found' });
-        }
-        console.log(`Syncing products from ${SHOPIFY_STORE}...`);
-        // FIX BUG-15: Paginate through ALL products (Shopify limit is 250 per page)
-        console.log('Making Shopify API requests (paginated)...');
-        let shopifyProducts = [];
-        let nextPageUrl = `https://${SHOPIFY_STORE}/admin/api/2024-01/products.json?limit=250`;
 
-        while (nextPageUrl) {
-            const response = await axios_1.default.get(nextPageUrl, {
-                headers: {
-                    'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
-                },
-                timeout: 60000,
-            });
-            const pageProducts = response.data.products || [];
-            shopifyProducts = shopifyProducts.concat(pageProducts);
-            console.log(`Fetched ${pageProducts.length} products (total so far: ${shopifyProducts.length})`);
-
-            // Check for next page via Link header
-            const linkHeader = response.headers['link'] || response.headers['Link'] || '';
-            const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
-            nextPageUrl = nextMatch ? nextMatch[1] : null;
-        }
-
-        console.log(`Total products fetched from Shopify: ${shopifyProducts.length}`);
-        let syncedCount = 0;
-        // Process products sequentially (reverted from batch processing)
-        for (const product of shopifyProducts) {
-            const imageUrl = product.image?.src || product.images?.[0]?.src || null;
-            const status = product.status;
-            console.log(`Processing product: ${product.title}`);
-            for (const variant of product.variants) {
-                try {
-                    await prisma.product.upsert({
-                        where: { shopifyVariantId: `gid://shopify/ProductVariant/${variant.id}` },
-                        create: {
-                            shopId: shop.id,
-                            shopifyProductId: `gid://shopify/Product/${product.id}`,
-                            shopifyVariantId: `gid://shopify/ProductVariant/${variant.id}`,
-                            sku: variant.sku || null,
-                            title: product.title,
-                            variantTitle: variant.title,
-                            imageUrl,
-                            status,
-                            currentPrice: parseFloat(variant.price),
-                        },
-                        update: {
-                            title: product.title,
-                            variantTitle: variant.title,
-                            imageUrl,
-                            status,
-                            currentPrice: parseFloat(variant.price),
-                            sku: variant.sku || null,
-                        },
-                    });
-                    syncedCount++;
-                    if (syncedCount % 10 === 0) {
-                        console.log(`Processed ${syncedCount} variants so far...`);
-                    }
-                }
-                catch (dbError) {
-                    console.error(`Error upserting variant ${variant.id}:`, dbError.message);
-                    throw dbError; // Re-throw to be caught by outer catch
-                }
-            }
-        }
-        console.log(`✅ Synced ${syncedCount} products from Shopify`);
-        res.json({ success: true, syncedCount });
-    }
-    catch (error) {
-        console.error('❌ Error syncing products:');
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
-        if (error.response) {
-            console.error('Shopify Response Status:', error.response.status);
-            console.error('Shopify Response Data:', JSON.stringify(error.response.data, null, 2));
-        }
-        res.status(500).json({
-            error: 'Failed to sync products',
-            message: error.message,
-            details: error.response?.data || error.message
-        });
-    }
-});
-// Get sync status
-app.get('/api/products/sync/status', async (req, res) => {
-    try {
-        const shop = req.context.shop;
-        if (!shop) {
-            return res.status(404).json({ error: 'Shop not found' });
-        }
-        // Get the most recent product_sync job
-        const job = await prisma.job.findFirst({
-            where: {
-                shopId: shop.id,
-                jobType: 'product_sync'
-            },
-            orderBy: { createdAt: 'desc' }
-        });
-        if (!job) {
-            return res.json({ job: null });
-        }
-        res.json({ job });
-    }
-    catch (error) {
-        console.error('Error fetching sync status:', error);
-        res.status(500).json({ error: 'Failed to fetch sync status' });
-    }
-});
 
 // --- SINGLE SOURCE OF TRUTH FOR TEMPLATE STRUCTURE ---
 const PRODUCT_TEMPLATE_COLUMNS = [

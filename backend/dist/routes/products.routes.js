@@ -1060,7 +1060,7 @@ router.get('/export', async (req, res) => {
         res.status(500).json({ error: 'Failed to export products' });
     }
 });
-// Sync Products (Trigger Bulk Update)
+// Sync Products from Shopify to local DB
 router.post('/sync', async (req, res) => {
     try {
         const shopDomain = res.locals.shopify.session.shop;
@@ -1068,12 +1068,17 @@ router.post('/sync', async (req, res) => {
         if (!shop) {
             return res.status(404).json({ error: 'Shop not found' });
         }
-        const { BulkPriceUpdateService } = require("../services/bulkPriceUpdate.service");
-        const jobId = await BulkPriceUpdateService.triggerUpdate({
-            shopId: shop.id,
-            triggeredBy: 'manual_sync'
+        const { ShopifyService } = require("../services/shopify.service");
+        const shopifyService = await ShopifyService.forShop(shop.domain);
+        
+        // Trigger syncProducts in background (fire-and-forget)
+        setImmediate(() => {
+            shopifyService.syncProducts(shop.id).catch((error) => {
+                console.error(`Product sync failed for shop ${shop.id}:`, error);
+            });
         });
-        res.json({ success: true, jobId, message: 'Sync started' });
+        
+        res.json({ success: true, message: 'Shopify sync started' });
     } catch (error) {
         console.error('Error starting sync:', error);
         res.status(500).json({ error: 'Failed to start sync' });
@@ -1088,9 +1093,16 @@ router.get('/sync/status', async (req, res) => {
         if (!shop) {
             return res.status(404).json({ error: 'Shop not found' });
         }
-        const { BulkPriceUpdateService } = require("../services/bulkPriceUpdate.service");
-        const jobs = await BulkPriceUpdateService.getRecentJobs(shop.id, 1);
-        const job = jobs.length > 0 ? jobs[0] : null;
+        
+        // Get the most recent product_sync job
+        const job = await prisma.job.findFirst({
+            where: {
+                shopId: shop.id,
+                jobType: 'product_sync'
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        
         res.json({ success: true, job });
     } catch (error) {
         console.error('Error fetching sync status:', error);
