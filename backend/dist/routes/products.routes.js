@@ -423,7 +423,7 @@ router.post('/calculate-price', async (req, res) => {
             discount: parseFloat(discount),
             discountType,
             makingChargeType,
-            makingChargeValue: makingChargeValue ? parseFloat(makingChargeValue) : null,
+            makingChargeValue: (makingChargeValue !== undefined && makingChargeValue !== null && makingChargeValue !== '') ? parseFloat(makingChargeValue) : null,
             makingGroupId,
             metalDiscountType,
             metalDiscountValue: metalDiscountValue ? parseFloat(metalDiscountValue) : null,

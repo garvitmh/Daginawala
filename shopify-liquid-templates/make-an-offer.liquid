@@ -1,0 +1,188 @@
+<!-- 
+  Make an Offer Snippet 
+  Include this in your product template (e.g., sections/main-product.liquid)
+  Usage: {% render 'make-an-offer' %}
+-->
+
+<style>
+  .make-an-offer-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #000;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+  .make-an-offer-btn:hover {
+    background-color: #333;
+  }
+  
+  .offer-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+  }
+  .offer-modal.active {
+    display: flex;
+  }
+  .offer-modal-content {
+    background: #fff;
+    padding: 30px;
+    width: 90%;
+    max-width: 400px;
+    position: relative;
+    border-radius: 4px;
+  }
+  .offer-modal-close {
+    position: absolute;
+    top: 10px; right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+  }
+  .offer-form-group {
+    margin-bottom: 15px;
+  }
+  .offer-form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  .offer-form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+  }
+  .offer-disclaimer {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 15px;
+  }
+  .offer-submit-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #000;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  .offer-success-msg {
+    display: none;
+    color: green;
+    font-weight: bold;
+    margin-top: 15px;
+  }
+  .offer-error-msg {
+    display: none;
+    color: red;
+    font-weight: bold;
+    margin-top: 15px;
+  }
+</style>
+
+<button type="button" class="make-an-offer-btn" onclick="openOfferModal()">Make an Offer</button>
+
+<div class="offer-modal" id="offerModal">
+  <div class="offer-modal-content">
+    <span class="offer-modal-close" onclick="closeOfferModal()">&times;</span>
+    <h3>Make an Offer</h3>
+    <p>Love this piece? Propose a price!</p>
+    
+    <div class="offer-disclaimer">
+      <em>Note: Metal rates (e.g., Gold) are fixed per market value. Only Making Charges and Gemstone charges are negotiable.</em>
+    </div>
+
+    <form id="offerForm">
+      <div class="offer-form-group">
+        <label for="offerName">Your Name</label>
+        <input type="text" id="offerName" required>
+      </div>
+      <div class="offer-form-group">
+        <label for="offerPhone">Phone Number</label>
+        <input type="tel" id="offerPhone" required>
+      </div>
+      <div class="offer-form-group">
+        <label for="offerAmount">Your Offer Amount (₹)</label>
+        <input type="number" id="offerAmount" required>
+      </div>
+      
+      <button type="submit" class="offer-submit-btn" id="offerSubmitBtn">Submit Offer</button>
+      
+      <div class="offer-success-msg" id="offerSuccessMsg">Your offer has been submitted! We will contact you shortly.</div>
+      <div class="offer-error-msg" id="offerErrorMsg">Something went wrong. Please try again.</div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openOfferModal() {
+    document.getElementById('offerModal').classList.add('active');
+  }
+  
+  function closeOfferModal() {
+    document.getElementById('offerModal').classList.remove('active');
+    document.getElementById('offerSuccessMsg').style.display = 'none';
+    document.getElementById('offerErrorMsg').style.display = 'none';
+    document.getElementById('offerForm').reset();
+  }
+
+  document.getElementById('offerForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('offerSubmitBtn');
+    submitBtn.innerText = 'Submitting...';
+    submitBtn.disabled = true;
+    
+    document.getElementById('offerSuccessMsg').style.display = 'none';
+    document.getElementById('offerErrorMsg').style.display = 'none';
+
+    // IMPORTANT: Make sure this is the live URL of your Render backend
+    const APP_BACKEND_URL = 'https://gemini-backend.onrender.com/api/public/offers';
+
+    const payload = {
+      shopDomain: Shopify.shop,
+      shopProductId: '{{ product.id }}',
+      productTitle: '{{ product.title | escape }}',
+      productUrl: window.location.href,
+      customerName: document.getElementById('offerName').value,
+      customerPhone: document.getElementById('offerPhone').value,
+      offerAmount: document.getElementById('offerAmount').value
+    };
+
+    fetch(APP_BACKEND_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+      submitBtn.innerText = 'Submit Offer';
+      submitBtn.disabled = false;
+      
+      if(data.success) {
+        document.getElementById('offerSuccessMsg').style.display = 'block';
+        setTimeout(closeOfferModal, 3000);
+      } else {
+        document.getElementById('offerErrorMsg').innerText = data.error || 'Something went wrong.';
+        document.getElementById('offerErrorMsg').style.display = 'block';
+      }
+    })
+    .catch(error => {
+      console.error('Offer error:', error);
+      submitBtn.innerText = 'Submit Offer';
+      submitBtn.disabled = false;
+      document.getElementById('offerErrorMsg').innerText = 'Connection error. Please try again.';
+      document.getElementById('offerErrorMsg').style.display = 'block';
+    });
+  });
+</script>

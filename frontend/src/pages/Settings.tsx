@@ -335,6 +335,30 @@ export default function Settings() {
                         </BlockStack>
                     </Card>
                 </Layout.Section>
+
+                <Layout.Section>
+                    <Card>
+                        <BlockStack gap="400">
+                            <Text variant="headingMd" as="h3">
+                                Notifications & Alerts
+                            </Text>
+                            <Text as="p" tone="subdued">
+                                Configure where automated notifications (like "Make an Offer" alerts) are sent.
+                            </Text>
+
+                            <BlockStack gap="200">
+                                <TextField
+                                    label="Notification Email Address"
+                                    type="email"
+                                    value={settings.notificationEmail || ''}
+                                    onChange={(value) => setSettings({ ...settings, notificationEmail: value })}
+                                    autoComplete="email"
+                                    helpText="The email address that will receive customer offers and alerts."
+                                />
+                            </BlockStack>
+                        </BlockStack>
+                    </Card>
+                </Layout.Section>
             </Layout>
         </Page>
     );

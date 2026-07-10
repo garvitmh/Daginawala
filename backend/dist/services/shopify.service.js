@@ -62,7 +62,6 @@ class ShopifyService {
                     <td style="padding: 10px 16px; color: #374151;">
                         ${breakdown.metal_name || 'Metal'} Price
                         ${breakdown.has_metal_discount ? `<span style="margin-left:8px; font-size:11px; color:#d93025; background:#fee2e2; padding:1px 5px; border-radius:3px; font-weight:600; text-transform:uppercase;">Sale</span>` : ''}
-                        <div style="font-size: 11px; color: #6b7280; font-weight: 400;">(₹${fmt(breakdown.metal_rate)}/g)</div>
                     </td>
                     <td style="padding: 10px 16px; text-align: right; font-weight: 500; color: #1a1c1d;">
                         ${breakdown.has_metal_discount ? `<div style="text-decoration: line-through; color: #9ca3af; font-size: 11px; font-weight: 400;">₹${fmt(breakdown.metal_value_original)}</div>` : ''}
@@ -71,14 +70,7 @@ class ShopifyService {
                 </tr>
                 <tr style="border-bottom: 1px solid #f1f2f3;">
                     <td style="padding: 10px 16px; color: #374151;">
-                        Wastage
-                        <div style="font-size: 11px; color: #6b7280; font-weight: 400;">(${breakdown.wastage_pct}%)</div>
-                    </td>
-                    <td style="padding: 10px 16px; text-align: right; font-weight: 500; color: #1a1c1d;">₹${fmt(breakdown.wastage_amount)}</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #f1f2f3;">
-                    <td style="padding: 10px 16px; color: #374151;">
-                        Making Charges
+                        Making Charges <span style="font-size: 12px; color: #4a4d4f; font-weight: 500;">(Negotiable)</span>
                         ${breakdown.has_making_discount ? `<span style="margin-left:8px; font-size:11px; color:#d93025; background:#fee2e2; padding:1px 5px; border-radius:3px; font-weight:600; text-transform:uppercase;">Sale</span>` : ''}
                         <div style="font-size: 11px; color: #6b7280; font-weight: 400;">
                             ${breakdown.making_charge_type === 'percent' ? `${breakdown.making_charge_rate}% of value` :
@@ -130,7 +122,7 @@ class ShopifyService {
             html += `
                 <tr style="border-bottom: 1px solid #f1f2f3;">
                     <td style="padding: 10px 16px; color: #374151;">
-                        ${breakdown.gemstone_name || 'Gemstone'}
+                        ${breakdown.gemstone_name || 'Gemstone'} <span style="font-size: 12px; color: #4a4d4f; font-weight: 500;">(Negotiable)</span>
                         ${breakdown.has_gemstone_discount ? `<span style="margin-left:8px; font-size:11px; color:#d93025; background:#fee2e2; padding:1px 5px; border-radius:3px; font-weight:600; text-transform:uppercase;">Sale</span>` : ''}
                         ${(breakdown.gemstone_details && breakdown.gemstone_details.type === 'per_carat') ? `
                             <div style="font-size: 11px; color: #6b7280; font-weight: 400;">
