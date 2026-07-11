@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const username = 'admin';
-  const plainPassword = 'your_jwt_dashboard_secret_here';
+  const plainPassword = 'Daginawala@Admin2026';
   
   const hashedPassword = await bcrypt.hash(plainPassword, 10);
   
