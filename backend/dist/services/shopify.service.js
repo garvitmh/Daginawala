@@ -62,6 +62,7 @@ class ShopifyService {
                     <td style="padding: 10px 16px; color: #374151;">
                         ${breakdown.metal_name || 'Metal'} Price
                         ${breakdown.has_metal_discount ? `<span style="margin-left:8px; font-size:11px; color:#d93025; background:#fee2e2; padding:1px 5px; border-radius:3px; font-weight:600; text-transform:uppercase;">Sale</span>` : ''}
+                        ${breakdown.net_weight ? `<div style="font-size: 11px; color: #6b7280; font-weight: 400;">(approx ${breakdown.net_weight}g)</div>` : ''}
                     </td>
                     <td style="padding: 10px 16px; text-align: right; font-weight: 500; color: #1a1c1d;">
                         ${breakdown.has_metal_discount ? `<div style="text-decoration: line-through; color: #9ca3af; font-size: 11px; font-weight: 400;">₹${fmt(breakdown.metal_value_original)}</div>` : ''}
