@@ -309,6 +309,8 @@ class ShopifyService {
                         if (product.pearlWeight !== null && product.pearlWeight !== undefined) {
                             mfs.push({ ownerId: gid, namespace: "custom", key: "pearl_weight", value: product.pearlWeight.toString(), type: "number_decimal" });
                         }
+                        
+                        mfs.push({ ownerId: gid, namespace: "custom", key: "enable_offer", value: product.enableOffer ? "true" : "false", type: "boolean" });
                     }
 
                     const metafieldVariables = {

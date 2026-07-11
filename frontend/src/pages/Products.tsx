@@ -105,6 +105,7 @@ interface Product {
     gstPct?: number;
     minOfferAmount?: number;
     maxOffersPerUser?: number;
+    enableOffer?: boolean;
 }
 
 interface MakingGroup {
@@ -207,6 +208,7 @@ export default function Products() {
     // Offer settings
     const [editMinOfferAmount, setEditMinOfferAmount] = useState('');
     const [editMaxOffersPerUser, setEditMaxOffersPerUser] = useState('');
+    const [editEnableOffer, setEditEnableOffer] = useState(false);
 
     const [editGemstoneCaratRange, setEditGemstoneCaratRange] = useState('');
     const [editStonePieces, setEditStonePieces] = useState('');
@@ -820,6 +822,7 @@ export default function Products() {
         setEditDiscountType(product.discountType || 'flat');
         setEditMinOfferAmount(product.minOfferAmount?.toString() || '');
         setEditMaxOffersPerUser(product.maxOffersPerUser?.toString() || '');
+        setEditEnableOffer(product.enableOffer || false);
 
 
         setEditEnamelColor(product.enamelColor || '');
@@ -874,8 +877,11 @@ export default function Products() {
                 gemstoneDiscountValue: editGemstoneDiscountValue ? parseFloat(editGemstoneDiscountValue) : null,
                 discount: editDiscount ? parseFloat(editDiscount) : null,
                 discountType: editDiscountType,
+                wastagePct: editWastagePct ? parseFloat(editWastagePct) : null,
+                gstPct: editGstPct ? parseFloat(editGstPct) : null,
                 minOfferAmount: editMinOfferAmount ? parseFloat(editMinOfferAmount) : null,
-                maxOffersPerUser: editMaxOffersPerUser ? parseInt(editMaxOffersPerUser) : null,
+                maxOffersPerUser: editMaxOffersPerUser ? parseInt(editMaxOffersPerUser, 10) : null,
+                enableOffer: editEnableOffer,
                 enamelColor: editEnamelColor || null,
 
                 enamelWeightGrams: editEnamelWeightGrams ? parseFloat(editEnamelWeightGrams) : null,
@@ -888,8 +894,6 @@ export default function Products() {
                 })),
                 grossGoldWeight: editGrossGoldWeight ? parseFloat(editGrossGoldWeight.toString()) : null,
                 autoGrossGoldWeight: editAutoGrossGoldWeight,
-                wastagePct: editWastagePct,
-                gstPct: editGstPct,
             });
             setSuccessMessage('Product updated successfully!');
             // Modal stays open as requested by user
@@ -1926,6 +1930,14 @@ export default function Products() {
                             <BlockStack gap="400">
                                 <Text as="h3" variant="headingMd">Offer Settings</Text>
 
+                                <Checkbox
+                                    label="Enable 'Make an Offer' Button"
+                                    checked={editEnableOffer}
+                                    onChange={setEditEnableOffer}
+                                    helpText="When enabled, this allows customers to negotiate the price of this specific product."
+                                />
+
+                                {editEnableOffer && (
                                 <InlineStack gap="400">
                                     <div style={{ flex: 1 }}>
                                         <TextField
@@ -1951,6 +1963,7 @@ export default function Products() {
                                         />
                                     </div>
                                 </InlineStack>
+                                )}
                             </BlockStack>
                         </Card>
 

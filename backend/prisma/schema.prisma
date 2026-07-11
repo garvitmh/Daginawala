@@ -242,6 +242,7 @@ model Product {
   jewelryLength                 String?
   minOfferAmount                Float?
   maxOffersPerUser              Int?
+  enableOffer                   Boolean           @default(false)
   priceHistory                  PriceHistory[]
   makingGroup                   MakingGroup?      @relation(fields: [makingGroupId], references: [id])
   shop                          Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)

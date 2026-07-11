@@ -4,6 +4,7 @@
   Usage: {% render 'make-an-offer' %}
 -->
 
+{% if product.metafields.custom.enable_offer.value == true or product.metafields.custom.enable_offer == 'true' %}
 <style>
   .make-an-offer-btn {
     width: 100%;
@@ -261,3 +262,4 @@
     });
   });
 </script>
+{% endif %}

@@ -215,7 +215,10 @@ router.put('/:id', async (req, res) => {
             grossGoldWeight,
             autoGrossGoldWeight,
             wastagePct,
-            gstPct
+            gstPct,
+            minOfferAmount,
+            maxOffersPerUser,
+            enableOffer
         } = req.body;
 
         // Update product data
@@ -252,6 +255,9 @@ router.put('/:id', async (req, res) => {
             autoGrossGoldWeight: autoGrossGoldWeight !== undefined ? autoGrossGoldWeight : existingProduct.autoGrossGoldWeight,
             wastagePct: wastagePct !== undefined ? wastagePct : existingProduct.wastagePct,
             gstPct: gstPct !== undefined ? gstPct : existingProduct.gstPct,
+            minOfferAmount: minOfferAmount !== undefined ? minOfferAmount : existingProduct.minOfferAmount,
+            maxOffersPerUser: maxOffersPerUser !== undefined ? maxOffersPerUser : existingProduct.maxOffersPerUser,
+            enableOffer: enableOffer !== undefined ? enableOffer : existingProduct.enableOffer
         };
 
         // Update the product in database (without price yet)
@@ -691,7 +697,10 @@ router.post('/import', async (req, res) => {
                     pearlQuality: normalizedRow['Pearl Quality'] !== undefined ? (normalizedRow['Pearl Quality'] ? String(normalizedRow['Pearl Quality']).trim() : null) : existingProduct.pearlQuality,
                     ringSize: normalizedRow['Ring Size'] !== undefined ? (normalizedRow['Ring Size'] ? String(normalizedRow['Ring Size']).trim() : null) : existingProduct.ringSize,
                     bangleSize: normalizedRow['Bangle Size'] !== undefined ? (normalizedRow['Bangle Size'] ? String(normalizedRow['Bangle Size']).trim() : null) : existingProduct.bangleSize,
-                    jewelryLength: normalizedRow['Jewelry Length'] !== undefined ? (normalizedRow['Jewelry Length'] ? String(normalizedRow['Jewelry Length']).trim() : null) : existingProduct.jewelryLength
+                    jewelryLength: normalizedRow['Jewelry Length'] !== undefined ? (normalizedRow['Jewelry Length'] ? String(normalizedRow['Jewelry Length']).trim() : null) : existingProduct.jewelryLength,
+                    enableOffer: normalizedRow['Enable Offer'] !== undefined ? (normalizedRow['Enable Offer']?.toString().toUpperCase() === 'TRUE') : existingProduct.enableOffer,
+                    minOfferAmount: normalizedRow['Min Offer Amount (₹)'] !== undefined ? (parseFloat(normalizedRow['Min Offer Amount (₹)']) || null) : existingProduct.minOfferAmount,
+                    maxOffersPerUser: normalizedRow['Max Offers Per User'] !== undefined ? (parseInt(normalizedRow['Max Offers Per User']) || null) : existingProduct.maxOffersPerUser
                 };
 
                 console.log(`[IMPORT] Final Update Data for ${SKU}:`, JSON.stringify({
@@ -1018,6 +1027,9 @@ router.get('/export', async (req, res) => {
             row['Ring Size'] = p.ringSize || '';
             row['Bangle Size'] = p.bangleSize || '';
             row['Jewelry Length'] = p.jewelryLength || '';
+            row['Enable Offer'] = p.enableOffer ? 'TRUE' : 'FALSE';
+            row['Min Offer Amount (₹)'] = p.minOfferAmount || '';
+            row['Max Offers Per User'] = p.maxOffersPerUser || '';
             row['Current Price'] = p.currentPrice || '';
             row['Last Synced'] = p.updatedAt.toISOString().split('T')[0];
             return row;
@@ -1035,6 +1047,7 @@ router.get('/export', async (req, res) => {
             'HUID', 'Diamond Certified', 'Diamond Lab', 'Diamond Certificate ID', 
             'Pearl Type', 'Pearl Pieces', 'Pearl Weight (ct)', 'Pearl Quality', 
             'Ring Size', 'Bangle Size', 'Jewelry Length',
+            'Enable Offer', 'Min Offer Amount (₹)', 'Max Offers Per User',
             'Current Price', 'Last Synced'
         ];
 
