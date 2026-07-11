@@ -77,9 +77,6 @@
             {% if breakdown.has_metal_discount %}
               <span style="margin-left:8px; font-size:11px; color:#d93025; background:#fee2e2; padding:1px 5px; border-radius:3px; font-weight:600; text-transform:uppercase;">Sale</span>
             {% endif %}
-            <div style="font-size: 12px; color: #6b7280;">
-              (₹{{ breakdown.metal_rate | divided_by: 100.0 | round: 2 }}/g)
-            </div>
           </td>
           <td style="padding: 10px 16px; text-align: right; font-weight: 500;">
             {% if breakdown.has_metal_discount %}

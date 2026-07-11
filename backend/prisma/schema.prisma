@@ -240,10 +240,13 @@ model Product {
   ringSize                      String?
   bangleSize                    String?
   jewelryLength                 String?
+  minOfferAmount                Float?
+  maxOffersPerUser              Int?
   priceHistory                  PriceHistory[]
   makingGroup                   MakingGroup?      @relation(fields: [makingGroupId], references: [id])
   shop                          Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
   gemstones                     ProductGemstone[]
+  offerSubmissions              OfferSubmission[]
 
   @@index([shopId, shopifyProductId])
   @@index([shopId, sku])
@@ -322,4 +325,20 @@ model AdminUser {
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model OfferSubmission {
+  id           String   @id @default(cuid())
+  shopId       String
+  productId    String
+  customerName String
+  customerPhone String
+  offerAmount  Float
+  pincode      String?
+  city         String?
+  createdAt    DateTime @default(now())
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, customerPhone])
+  @@index([shopId])
 }

@@ -26,7 +26,6 @@
               {% if breakdown_json.has_metal_discount %}
                 <span style="display: inline-block; margin-left: 8px; padding: 2px 6px; background: #fee2e2; color: #d93025; font-size: 11px; border-radius: 4px; font-weight: 600;">Sale</span>
               {% endif %}
-              <div style="color: #6d7175; font-size: 12px;">(₹{{ breakdown_json.metal_rate | round: 2 }}/g)</div>
             </td>
             <td style="padding: 8px 16px; text-align: right;">
               {% if breakdown_json.has_metal_discount %}

@@ -26,65 +26,107 @@
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.6);
-    z-index: 9999;
-    align-items: center;
-    justify-content: center;
+    z-index: 99999;
   }
   .offer-modal.active {
-    display: flex;
+    display: block;
   }
   .offer-modal-content {
     background: #fff;
     padding: 30px;
     width: 90%;
-    max-width: 400px;
-    position: relative;
-    border-radius: 4px;
+    max-width: 500px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  }
+  .offer-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  .offer-modal-header h3 {
+    margin: 0;
+    font-size: 20px;
   }
   .offer-modal-close {
-    position: absolute;
-    top: 10px; right: 15px;
-    font-size: 24px;
+    font-size: 28px;
     cursor: pointer;
+    line-height: 1;
+    color: #333;
+    padding: 5px;
+  }
+  .offer-form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
   }
   .offer-form-group {
+    flex: 1;
     margin-bottom: 15px;
+  }
+  .offer-form-row .offer-form-group {
+    margin-bottom: 0;
   }
   .offer-form-group label {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
+    font-size: 14px;
   }
   .offer-form-group input {
     width: 100%;
     padding: 10px;
     border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
   }
   .offer-disclaimer {
     font-size: 12px;
     color: #666;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 4px;
   }
   .offer-submit-btn {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
     background-color: #000;
     color: #fff;
     border: none;
     cursor: pointer;
     font-weight: bold;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+  .offer-submit-btn:disabled {
+    background-color: #666;
+    cursor: not-allowed;
   }
   .offer-success-msg {
     display: none;
-    color: green;
+    color: #0f5132;
+    background-color: #d1e7dd;
+    padding: 10px;
+    border-radius: 4px;
     font-weight: bold;
     margin-top: 15px;
+    text-align: center;
   }
   .offer-error-msg {
     display: none;
-    color: red;
+    color: #842029;
+    background-color: #f8d7da;
+    padding: 10px;
+    border-radius: 4px;
     font-weight: bold;
     margin-top: 15px;
+    text-align: center;
   }
 </style>
 
@@ -92,9 +134,12 @@
 
 <div class="offer-modal" id="offerModal">
   <div class="offer-modal-content">
-    <span class="offer-modal-close" onclick="closeOfferModal()">&times;</span>
-    <h3>Make an Offer</h3>
-    <p>Love this piece? Propose a price!</p>
+    <div class="offer-modal-header">
+      <h3>Make an Offer</h3>
+      <span class="offer-modal-close" onclick="closeOfferModal()">&times;</span>
+    </div>
+    
+    <p style="margin-bottom: 15px;">Love this piece? Propose a price!</p>
     
     <div class="offer-disclaimer">
       <em>Note: Metal rates (e.g., Gold) are fixed per market value. Only Making Charges and Gemstone charges are negotiable.</em>
@@ -103,15 +148,28 @@
     <form id="offerForm">
       <div class="offer-form-group">
         <label for="offerName">Your Name</label>
-        <input type="text" id="offerName" required>
+        <input type="text" id="offerName" required placeholder="John Doe">
       </div>
+      
       <div class="offer-form-group">
         <label for="offerPhone">Phone Number</label>
-        <input type="tel" id="offerPhone" required>
+        <input type="tel" id="offerPhone" required pattern="[0-9]{10}" minlength="10" maxlength="10" placeholder="10-digit mobile number" title="Please enter exactly 10 digits">
       </div>
+
+      <div class="offer-form-row">
+        <div class="offer-form-group">
+          <label for="offerPincode">Pincode</label>
+          <input type="text" id="offerPincode" required pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="6 digits">
+        </div>
+        <div class="offer-form-group">
+          <label for="offerCity">City</label>
+          <input type="text" id="offerCity" required placeholder="Your City">
+        </div>
+      </div>
+      
       <div class="offer-form-group">
         <label for="offerAmount">Your Offer Amount (₹)</label>
-        <input type="number" id="offerAmount" required>
+        <input type="number" id="offerAmount" required min="1" placeholder="Enter amount">
       </div>
       
       <button type="submit" class="offer-submit-btn" id="offerSubmitBtn">Submit Offer</button>
@@ -134,8 +192,23 @@
     document.getElementById('offerForm').reset();
   }
 
+  // Close modal when clicking outside of it
+  window.onclick = function(event) {
+    const modal = document.getElementById('offerModal');
+    if (event.target == modal) {
+      closeOfferModal();
+    }
+  }
+
   document.getElementById('offerForm').addEventListener('submit', function(e) {
     e.preventDefault();
+    
+    // Basic validation check
+    const phone = document.getElementById('offerPhone').value;
+    if (!phone.match(/^[0-9]{10}$/)) {
+      alert("Please enter a valid 10-digit phone number.");
+      return;
+    }
     
     const submitBtn = document.getElementById('offerSubmitBtn');
     submitBtn.innerText = 'Submitting...';
@@ -154,7 +227,9 @@
       productUrl: window.location.href,
       customerName: document.getElementById('offerName').value,
       customerPhone: document.getElementById('offerPhone').value,
-      offerAmount: document.getElementById('offerAmount').value
+      pincode: document.getElementById('offerPincode').value,
+      city: document.getElementById('offerCity').value,
+      offerAmount: parseFloat(document.getElementById('offerAmount').value)
     };
 
     fetch(APP_BACKEND_URL, {

@@ -98,11 +98,13 @@ interface Product {
 
     makingGroupId?: string | null;
     makingGroup?: { name: string } | null;
-    wastagePct?: number;
-    gstPct?: number;
     labourFromWeight?: string;
     wastageType?: string;
     wastageValue?: number;
+    wastagePct?: number;
+    gstPct?: number;
+    minOfferAmount?: number;
+    maxOffersPerUser?: number;
 }
 
 interface MakingGroup {
@@ -201,6 +203,10 @@ export default function Products() {
     const [editGemstoneClarity, setEditGemstoneClarity] = useState('');
     const [editDiscount, setEditDiscount] = useState('');
     const [editDiscountType, setEditDiscountType] = useState('flat');
+    
+    // Offer settings
+    const [editMinOfferAmount, setEditMinOfferAmount] = useState('');
+    const [editMaxOffersPerUser, setEditMaxOffersPerUser] = useState('');
 
     const [editGemstoneCaratRange, setEditGemstoneCaratRange] = useState('');
     const [editStonePieces, setEditStonePieces] = useState('');
@@ -812,6 +818,8 @@ export default function Products() {
         setEditGemstoneDiscountValue(product.gemstoneDiscountValue?.toString() || '');
         setEditDiscount(product.discount?.toString() || '');
         setEditDiscountType(product.discountType || 'flat');
+        setEditMinOfferAmount(product.minOfferAmount?.toString() || '');
+        setEditMaxOffersPerUser(product.maxOffersPerUser?.toString() || '');
 
 
         setEditEnamelColor(product.enamelColor || '');
@@ -866,6 +874,8 @@ export default function Products() {
                 gemstoneDiscountValue: editGemstoneDiscountValue ? parseFloat(editGemstoneDiscountValue) : null,
                 discount: editDiscount ? parseFloat(editDiscount) : null,
                 discountType: editDiscountType,
+                minOfferAmount: editMinOfferAmount ? parseFloat(editMinOfferAmount) : null,
+                maxOffersPerUser: editMaxOffersPerUser ? parseInt(editMaxOffersPerUser) : null,
                 enamelColor: editEnamelColor || null,
 
                 enamelWeightGrams: editEnamelWeightGrams ? parseFloat(editEnamelWeightGrams) : null,
@@ -1912,6 +1922,38 @@ export default function Products() {
                             </BlockStack>
                         </Card>
 
+                        <Card>
+                            <BlockStack gap="400">
+                                <Text as="h3" variant="headingMd">Offer Settings</Text>
+
+                                <InlineStack gap="400">
+                                    <div style={{ flex: 1 }}>
+                                        <TextField
+                                            label="Minimum Offer Amount"
+                                            type="number"
+                                            value={editMinOfferAmount}
+                                            onChange={setEditMinOfferAmount}
+                                            prefix="₹"
+                                            placeholder="e.g. 5000"
+                                            autoComplete="off"
+                                            helpText="Lowest amount user can submit"
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <TextField
+                                            label="Max Offers Per User"
+                                            type="number"
+                                            value={editMaxOffersPerUser}
+                                            onChange={setEditMaxOffersPerUser}
+                                            placeholder="e.g. 3"
+                                            autoComplete="off"
+                                            helpText="Limit submissions per phone number"
+                                        />
+                                    </div>
+                                </InlineStack>
+                            </BlockStack>
+                        </Card>
+
                         <>
                             <Text as="h3" variant="headingMd">Price Breakdown (Updated)</Text>
                             <Card>
@@ -1932,7 +1974,6 @@ export default function Products() {
                                                             <td style={{ padding: '8px 16px' }}>
                                                                 {priceBreakdown.metal_name || 'Metal'} Price
                                                                 {priceBreakdown.has_metal_discount && <Badge tone="critical">Sale</Badge>}
-                                                                <div style={{ color: '#6d7175', fontSize: '12px' }}>(₹{(priceBreakdown.metal_rate / 100).toFixed(2)}/g)</div>
                                                             </td>
                                                             <td style={{ padding: '8px 16px', textAlign: 'right' }}>
                                                                 {priceBreakdown.has_metal_discount && (
