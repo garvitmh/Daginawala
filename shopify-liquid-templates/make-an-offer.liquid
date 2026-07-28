@@ -131,13 +131,13 @@
   }
 </style>
 
-<button type="button" class="make-an-offer-btn" onclick="openOfferModal()">Make an Offer</button>
+<button type="button" class="make-an-offer-btn" onclick="window.openOfferModal()">Make an Offer</button>
 
 <div class="offer-modal" id="offerModal">
   <div class="offer-modal-content">
     <div class="offer-modal-header">
       <h3>Make an Offer</h3>
-      <span class="offer-modal-close" onclick="closeOfferModal()">&times;</span>
+      <span class="offer-modal-close" onclick="window.closeOfferModal()">&times;</span>
     </div>
     
     <p style="margin-bottom: 15px;">Love this piece? Propose a price!</p>
@@ -182,41 +182,120 @@
 </div>
 
 <script>
-  function openOfferModal() {
-    document.getElementById('offerModal').classList.add('active');
+  function relocateModal() {
+    const modal = document.getElementById('offerModal');
+    if (modal && modal.parentNode !== document.body) {
+      document.body.appendChild(modal);
+    }
   }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', relocateModal);
+  } else {
+    relocateModal();
+  }
+  window.addEventListener('load', relocateModal);
+
+  // Setup live input validations
+  function setupInputValidators() {
+    const nameInput = document.getElementById('offerName');
+    const phoneInput = document.getElementById('offerPhone');
+    const pincodeInput = document.getElementById('offerPincode');
+    const cityInput = document.getElementById('offerCity');
+
+    if (nameInput) {
+      nameInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^a-zA-Z\s.]/g, '');
+      });
+    }
+    if (phoneInput) {
+      phoneInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+      });
+    }
+    if (pincodeInput) {
+      pincodeInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+      });
+    }
+    if (cityInput) {
+      cityInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^a-zA-Z\s]/g, '');
+      });
+    }
+  }
+
+  // Setup validators when DOM is loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupInputValidators);
+  } else {
+    setupInputValidators();
+  }
+
+  window.openOfferModal = function() {
+    relocateModal();
+    document.getElementById('offerModal').classList.add('active');
+  };
   
-  function closeOfferModal() {
+  window.closeOfferModal = function() {
     document.getElementById('offerModal').classList.remove('active');
     document.getElementById('offerSuccessMsg').style.display = 'none';
     document.getElementById('offerErrorMsg').style.display = 'none';
     document.getElementById('offerForm').reset();
-  }
+  };
 
   // Close modal when clicking outside of it
   window.onclick = function(event) {
     const modal = document.getElementById('offerModal');
     if (event.target == modal) {
-      closeOfferModal();
+      window.closeOfferModal();
     }
   }
 
   document.getElementById('offerForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    // Basic validation check
-    const phone = document.getElementById('offerPhone').value;
+    const errorMsg = document.getElementById('offerErrorMsg');
+    errorMsg.style.display = 'none';
+
+    const name = document.getElementById('offerName').value.trim();
+    const phone = document.getElementById('offerPhone').value.trim();
+    const pincode = document.getElementById('offerPincode').value.trim();
+    const city = document.getElementById('offerCity').value.trim();
+    const amountVal = document.getElementById('offerAmount').value.trim();
+
+    if (name.length < 2) {
+      errorMsg.innerText = "Please enter a valid name (at least 2 letters).";
+      errorMsg.style.display = 'block';
+      return;
+    }
     if (!phone.match(/^[0-9]{10}$/)) {
-      alert("Please enter a valid 10-digit phone number.");
+      errorMsg.innerText = "Please enter a valid 10-digit phone number.";
+      errorMsg.style.display = 'block';
+      return;
+    }
+    if (!pincode.match(/^[0-9]{6}$/)) {
+      errorMsg.innerText = "Please enter a valid 6-digit pincode.";
+      errorMsg.style.display = 'block';
+      return;
+    }
+    if (city.length < 2) {
+      errorMsg.innerText = "Please enter a valid city name.";
+      errorMsg.style.display = 'block';
       return;
     }
     
+    const amount = parseFloat(amountVal);
+    if (isNaN(amount) || amount <= 0) {
+      errorMsg.innerText = "Please enter a valid offer amount.";
+      errorMsg.style.display = 'block';
+      return;
+    }
+
     const submitBtn = document.getElementById('offerSubmitBtn');
     submitBtn.innerText = 'Submitting...';
     submitBtn.disabled = true;
     
     document.getElementById('offerSuccessMsg').style.display = 'none';
-    document.getElementById('offerErrorMsg').style.display = 'none';
 
     // IMPORTANT: Make sure this is the live URL of your VPS backend
     const APP_BACKEND_URL = 'https://api.daginawala.in/api/public/offers';
@@ -226,11 +305,11 @@
       shopProductId: '{{ product.id }}',
       productTitle: '{{ product.title | escape }}',
       productUrl: window.location.href,
-      customerName: document.getElementById('offerName').value,
-      customerPhone: document.getElementById('offerPhone').value,
-      pincode: document.getElementById('offerPincode').value,
-      city: document.getElementById('offerCity').value,
-      offerAmount: parseFloat(document.getElementById('offerAmount').value)
+      customerName: name,
+      customerPhone: phone,
+      pincode: pincode,
+      city: city,
+      offerAmount: amount
     };
 
     fetch(APP_BACKEND_URL, {
@@ -247,7 +326,7 @@
       
       if(data.success) {
         document.getElementById('offerSuccessMsg').style.display = 'block';
-        setTimeout(closeOfferModal, 3000);
+        setTimeout(window.closeOfferModal, 3000);
       } else {
         document.getElementById('offerErrorMsg').innerText = data.error || 'Something went wrong.';
         document.getElementById('offerErrorMsg').style.display = 'block';

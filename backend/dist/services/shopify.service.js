@@ -95,12 +95,10 @@ class ShopifyService {
 
                 let gemSubtext = '';
                 if (gem.weight) {
-                    const rate = Math.round((gem.cost / 100 / gem.weight) || 0);
-                    gemSubtext = `${gem.weight}${unit} × ₹${rate.toLocaleString()}/${unit}`;
+                    gemSubtext = `${gem.weight} ${unit}`;
                 }
                 else if (gem.pieces) {
-                    const rate = Math.round((gem.cost / 100 / gem.pieces) || 0);
-                    gemSubtext = `${gem.pieces} pcs × ₹${rate.toLocaleString()}/pc`;
+                    gemSubtext = `${gem.pieces} pcs`;
                 }
                 html += `
                 <tr style="border-bottom: 1px solid #f1f2f3;">
@@ -127,11 +125,11 @@ class ShopifyService {
                         ${breakdown.has_gemstone_discount ? `<span style="margin-left:8px; font-size:11px; color:#d93025; background:#fee2e2; padding:1px 5px; border-radius:3px; font-weight:600; text-transform:uppercase;">Sale</span>` : ''}
                         ${(breakdown.gemstone_details && breakdown.gemstone_details.type === 'per_carat') ? `
                             <div style="font-size: 11px; color: #6b7280; font-weight: 400;">
-                                ${breakdown.gemstone_details.weight}${unit} × ₹${(breakdown.gemstone_details.rate || 0).toLocaleString()}/${unit}
+                                ${breakdown.gemstone_details.weight} ${unit}
                             </div>` : ''}
                         ${(breakdown.gemstone_details && breakdown.gemstone_details.type === 'per_piece') ? `
                             <div style="font-size: 11px; color: #6b7280; font-weight: 400;">
-                                ${breakdown.gemstone_details.pieces} pcs × ₹${(breakdown.gemstone_details.rate || 0).toLocaleString()}/pc
+                                ${breakdown.gemstone_details.pieces} pcs
                             </div>` : ''}
                         ${(breakdown.gemstone_details && breakdown.gemstone_details.type === 'manual') ? `
                             <div style="font-size: 11px; color: #6b7280; font-weight: 400;">Gemstone Pricing Source: Manual (Per Piece)</div>` : 
@@ -151,7 +149,7 @@ class ShopifyService {
                         ${breakdown.has_enamel_discount ? `<span style="margin-left:8px; font-size:11px; color:#d93025; background:#fee2e2; padding:1px 5px; border-radius:3px; font-weight:600; text-transform:uppercase;">Sale</span>` : ''}
                         ${(breakdown.enamel_details && breakdown.enamel_details.type === 'per_gram') ? `
                             <div style="font-size: 11px; color: #6b7280; font-weight: 400;">
-                                ${breakdown.enamel_details.weight}g × ₹${(breakdown.enamel_details.rate || 0).toLocaleString()}/g
+                                ${breakdown.enamel_details.weight}g
                             </div>` : ''}
                     </td>
                     <td style="padding: 10px 16px; text-align: right; font-weight: 500; color: #1a1c1d;">
@@ -311,7 +309,11 @@ class ShopifyService {
                             mfs.push({ ownerId: gid, namespace: "custom", key: "pearl_weight", value: product.pearlWeight.toString(), type: "number_decimal" });
                         }
                         
-                        mfs.push({ ownerId: gid, namespace: "custom", key: "enable_offer", value: product.enableOffer ? "true" : "false", type: "boolean" });
+                        if (product.shopifyProductId) {
+                            mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "enable_offer", value: product.enableOffer ? "true" : "false", type: "boolean" });
+                        } else {
+                            mfs.push({ ownerId: gid, namespace: "custom", key: "enable_offer", value: product.enableOffer ? "true" : "false", type: "boolean" });
+                        }
                     }
 
                     const metafieldVariables = {
