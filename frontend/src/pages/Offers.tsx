@@ -103,6 +103,16 @@ export default function Offers() {
                     
                     // Automatically trigger WhatsApp redirect template for user ease
                     handleWhatsAppRedirect(updatedOffer);
+                } else if (status === 'counter_sent') {
+                    let msg = `Counter-offer of ${formatCurrency(updatedOffer.counterAmount)} sent successfully!`;
+                    if (updatedOffer.customerEmail) {
+                        msg += ' Notification email sent to customer.';
+                    }
+                    setSuccessBannerMessage(msg);
+                    setActiveOffer(updatedOffer);
+                    
+                    // Automatically trigger WhatsApp redirect template for user ease
+                    handleWhatsAppRedirect(updatedOffer);
                 } else {
                     setIsDetailModalOpen(false);
                 }
