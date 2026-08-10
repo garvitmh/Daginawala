@@ -45,6 +45,7 @@
         "node-cache": "^5.1.2",
         "node-cron": "^3.0.3",
         "nodemailer": "^6.9.7",
+        "ssh2": "^1.17.0",
         "xlsx": "^0.18.5"
     },
     "devDependencies": {

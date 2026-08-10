@@ -231,7 +231,7 @@ app.use(async (req, res, next) => {
     if (!req.path.startsWith('/api/')) return next();
 
     // Whitelist login, health, and status
-    if (['/api/login', '/api/health', '/api/db-status', '/api/public/offers'].includes(req.path)) {
+    if (['/api/login', '/api/health', '/api/db-status'].includes(req.path) || req.path.startsWith('/api/public/')) {
         return next();
     }
 
@@ -288,6 +288,7 @@ app.post('/api/login', async (req, res) => {
 
 app.use('/api/products', products_routes_1.default);
 app.use('/api/public/offers', require('./routes/offers.routes'));
+app.use('/api/offers', require('./routes/offers.routes'));
 const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
 // Helper to log audit events
 // Helper to log audit events

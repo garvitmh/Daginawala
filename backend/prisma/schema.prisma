@@ -26,6 +26,7 @@ model Shop {
   products        Product[]
   settings        ShopSettings?
   stoneRates      StoneRate[]
+  offerSubmissions OfferSubmission[]
 
   @@index([domain])
 }
@@ -53,7 +54,14 @@ model ShopSettings {
   rateSourceUrl                String?
   emailNotifications           Boolean  @default(true)
   notificationEmail            String?
+  whatsappNotifications        Boolean  @default(false)
+  notificationWhatsapp         String?
   webhookUrl                   String?
+  offerEnabled                 Boolean  @default(true)
+  makingChargeBubbles          String?  // JSON string mapping current making rate to array of offer rates
+  stoneDiscountOptions         String?  // Comma-separated string of stone discount options
+  minMarginAutoReject          Float?   // Auto reject margin threshold
+  maxMarginAutoApprove         Float?   // Auto approve margin threshold
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
   shop                         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
@@ -329,16 +337,34 @@ model AdminUser {
 }
 
 model OfferSubmission {
-  id           String   @id @default(cuid())
-  shopId       String
-  productId    String
-  customerName String
-  customerPhone String
-  offerAmount  Float
-  pincode      String?
-  city         String?
-  createdAt    DateTime @default(now())
-  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id                  String   @id @default(cuid())
+  offerId             String   @unique // e.g. AKD-OFFER-1055
+  shopId              String
+  productId           String
+  shopifyVariantId    String?
+  customerName        String
+  customerPhone       String
+  customerEmail       String?
+  goldRate            Float?
+  goldValue           Float?
+  stoneValue          Float?
+  stoneOffer          String?  // Discount selected (e.g. "5%" or "Rs. 1000")
+  makingRate          Float?
+  makingOffer         String?  // E.g. "1200"
+  gst                 Float?
+  originalTotal       Float?
+  offerAmount         Float    // Adjusted final offer total (Offer Total)
+  status              String   @default("pending") // pending, approved, rejected, counter_sent, expired, purchased
+  whatsAppSent        Boolean  @default(false)
+  pincode             String?
+  city                String?
+  message             String?  // Optional customer comment
+  counterAmount       Float?   // Counter offer price from admin
+  shopifyDraftOrderId String?  // Link to draft order created upon approval
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  product             Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shop                Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([productId, customerPhone])
   @@index([shopId])

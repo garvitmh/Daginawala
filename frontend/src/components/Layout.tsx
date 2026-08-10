@@ -8,6 +8,7 @@ import {
     ClockIcon,
     SettingsIcon,
     CollectionIcon,
+    ChatIcon,
 } from '@shopify/polaris-icons';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 import { SyncTopBar } from './SyncTopBar';
@@ -58,6 +59,13 @@ export default function Layout({ children }: LayoutProps) {
             url: '/history',
             selected: location.pathname === '/history',
             onClick: () => navigate('/history'),
+        },
+        {
+            label: 'Offers',
+            icon: ChatIcon,
+            url: '/offers',
+            selected: location.pathname === '/offers',
+            onClick: () => navigate('/offers'),
         },
         {
             label: 'Settings',

@@ -261,9 +261,36 @@ class PricingService {
 
         const gemNameForBreakdown = firstGemName || (product.gemstoneType ? (0, gemstoneDisplay_1.getGemstoneDisplayName)(product.gemstoneType) : 'Gemstone');
 
+        // Resolve offered making bubbles and stone discount options
+        let makingChargeBubblesArray = null;
+        if (settings && settings.makingChargeBubbles) {
+            try {
+                const mapping = typeof settings.makingChargeBubbles === 'string' 
+                    ? JSON.parse(settings.makingChargeBubbles) 
+                    : settings.makingChargeBubbles;
+                const key = Math.round(makingChargeValue).toString();
+                if (mapping[key]) {
+                    makingChargeBubblesArray = mapping[key];
+                }
+            } catch (e) {
+                console.error('Error parsing makingChargeBubbles:', e);
+            }
+        }
+        if (!makingChargeBubblesArray) {
+            const rate = Math.round(makingChargeValue);
+            makingChargeBubblesArray = [rate, Math.max(0, rate - 150), Math.max(0, rate - 300), Math.max(0, rate - 450)];
+        }
+
+        let stoneDiscountOptionsArray = ['0%', '2%', '5%', '7%', '10%', 'Custom'];
+        if (settings && settings.stoneDiscountOptions) {
+            stoneDiscountOptionsArray = settings.stoneDiscountOptions.split(',').map(s => s.trim());
+        }
+
         return {
             price: finalPrice,
             breakdown: {
+                making_charge_bubbles: makingChargeBubblesArray,
+                stone_discount_options: stoneDiscountOptionsArray,
                 metal: product.metal,
                 karat: product.karat,
                 weight: weight,

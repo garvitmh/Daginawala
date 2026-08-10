@@ -735,6 +735,85 @@ class ShopifyService {
         }
         return products;
     }
+
+    async createDraftOrder(variantId, quantity, customPrice, customerDetails) {
+        try {
+            const numericVariantId = variantId.startsWith('gid://') 
+                ? variantId.split('ProductVariant/').pop() 
+                : variantId;
+            
+            const payload = {
+                draft_order: {
+                    line_items: [
+                        {
+                            variant_id: parseInt(numericVariantId),
+                            quantity: quantity || 1,
+                            price: parseFloat(customPrice).toFixed(2)
+                        }
+                    ],
+                    use_customer_default_address: true
+                }
+            };
+
+            if (customerDetails) {
+                payload.draft_order.customer = {
+                    first_name: customerDetails.name?.split(' ')[0] || customerDetails.name || '',
+                    last_name: customerDetails.name?.split(' ').slice(1).join(' ') || '',
+                    phone: customerDetails.phone || '',
+                    email: customerDetails.email || ''
+                };
+            }
+            
+            const response = await axios_1.default.post(
+                `https://${this.domain}/admin/api/2024-01/draft_orders.json`,
+                payload,
+                { headers: ShopifyService.getHeaders(this.accessToken) }
+            );
+            
+            if (response.data?.draft_order) {
+                return {
+                    success: true,
+                    draftOrderId: response.data.draft_order.id.toString(),
+                    invoiceUrl: response.data.draft_order.invoice_url
+                };
+            } else {
+                throw new Error('Draft order was not returned by Shopify');
+            }
+        } catch (error) {
+            console.error('[SHOPIFY] Failed to create draft order:', error.response?.data || error.message);
+            return {
+                success: false,
+                error: error.response?.data?.errors ? JSON.stringify(error.response.data.errors) : error.message
+            };
+        }
+    }
+
+    async sendDraftOrderInvoiceEmail(draftOrderId, customMessage) {
+        try {
+            const payload = {
+                draft_order_invoice: {}
+            };
+            if (customMessage) {
+                payload.draft_order_invoice.custom_message = customMessage;
+            }
+            const response = await axios_1.default.post(
+                `https://${this.domain}/admin/api/2024-01/draft_orders/${draftOrderId}/send_invoice.json`,
+                payload,
+                { headers: ShopifyService.getHeaders(this.accessToken) }
+            );
+            if (response.data?.draft_order_invoice) {
+                return { success: true };
+            } else {
+                throw new Error('Invoice email was not sent successfully by Shopify');
+            }
+        } catch (error) {
+            console.error('[SHOPIFY] Failed to send draft order invoice:', error.response?.data || error.message);
+            return {
+                success: false,
+                error: error.response?.data?.errors ? JSON.stringify(error.response.data.errors) : error.message
+            };
+        }
+    }
 }
 exports.ShopifyService = ShopifyService;
 ShopifyService.shopDomainEnv = process.env.SHOPIFY_STORE;

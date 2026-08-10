@@ -1,344 +1,404 @@
-<!-- 
-  Make an Offer Snippet 
-  Include this in your product template (e.g., sections/main-product.liquid)
-  Usage: {% render 'make-an-offer' %}
--->
-
-{% if product.metafields.custom.enable_offer.value == true or product.metafields.custom.enable_offer == 'true' %}
-<style>
-  .make-an-offer-btn {
-    width: 100%;
-    padding: 12px;
-    background-color: #000;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    font-weight: bold;
-    margin-top: 10px;
-    margin-bottom: 20px;
-    text-transform: uppercase;
-  }
-  .make-an-offer-btn:hover {
-    background-color: #333;
-  }
+{% comment %}
+  Gemini App - Enhanced Make an Offer Widget
   
-  .offer-modal {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.6);
-    z-index: 99999;
-  }
-  .offer-modal.active {
-    display: block;
-  }
-  .offer-modal-content {
-    background: #fff;
-    padding: 30px;
-    width: 90%;
-    max-width: 500px;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  }
-  .offer-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-  }
-  .offer-modal-header h3 {
-    margin: 0;
-    font-size: 20px;
-  }
-  .offer-modal-close {
-    font-size: 28px;
-    cursor: pointer;
-    line-height: 1;
-    color: #333;
-    padding: 5px;
-  }
-  .offer-form-row {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 15px;
-  }
-  .offer-form-group {
-    flex: 1;
-    margin-bottom: 15px;
-  }
-  .offer-form-row .offer-form-group {
-    margin-bottom: 0;
-  }
-  .offer-form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-    font-size: 14px;
-  }
-  .offer-form-group input {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 14px;
-  }
-  .offer-disclaimer {
-    font-size: 12px;
-    color: #666;
-    margin-bottom: 20px;
-    background: #f9f9f9;
-    padding: 10px;
-    border-radius: 4px;
-  }
-  .offer-submit-btn {
-    width: 100%;
-    padding: 14px;
-    background-color: #000;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    font-weight: bold;
-    border-radius: 4px;
-    font-size: 16px;
-  }
-  .offer-submit-btn:disabled {
-    background-color: #666;
-    cursor: not-allowed;
-  }
-  .offer-success-msg {
-    display: none;
-    color: #0f5132;
-    background-color: #d1e7dd;
-    padding: 10px;
-    border-radius: 4px;
-    font-weight: bold;
-    margin-top: 15px;
-    text-align: center;
-  }
-  .offer-error-msg {
-    display: none;
-    color: #842029;
-    background-color: #f8d7da;
-    padding: 10px;
-    border-radius: 4px;
-    font-weight: bold;
-    margin-top: 15px;
-    text-align: center;
-  }
-</style>
+  This snippet displays a simple "Make an Offer" button that expands inline
+  into a dynamic negotiation form with real-time field validation.
+{% endcomment %}
 
-<button type="button" class="make-an-offer-btn" onclick="window.openOfferModal()">Make an Offer</button>
+{% assign breakdown = product.selected_or_first_available_variant.metafields.gemini.price_breakdown.value | default: product.selected_or_first_available_variant.metafields.gemini.price_breakdown %}
 
-<div class="offer-modal" id="offerModal">
-  <div class="offer-modal-content">
-    <div class="offer-modal-header">
-      <h3>Make an Offer</h3>
-      <span class="offer-modal-close" onclick="window.closeOfferModal()">&times;</span>
-    </div>
-    
-    <p style="margin-bottom: 15px;">Love this piece? Propose a price!</p>
-    
-    <div class="offer-disclaimer">
-      <em>Note: Metal rates (e.g., Gold) are fixed per market value. Only Making Charges and Gemstone charges are negotiable.</em>
-    </div>
+{% if breakdown %}
+  {% assign gemstone_price_raw = breakdown.gemstone_price | default: 0 %}
+  {% assign making_charges_raw = breakdown.making_charges | default: 0 %}
+  {% assign metal_value_raw = breakdown.metal_value | default: 0 %}
+  {% assign gst_pct_raw = breakdown.gst_pct | default: 3 %}
+  {% assign total_original_raw = breakdown.total | default: 0 %}
+  
+  {% comment %} Check if the product has a stone/gemstone {% endcomment %}
+  {% assign has_stones = false %}
+  {% if gemstone_price_raw > 0 or breakdown.gemstone_details.gemstones.size > 0 %}
+    {% assign has_stones = true %}
+  {% endif %}
 
-    <form id="offerForm">
-      <div class="offer-form-group">
-        <label for="offerName">Your Name</label>
-        <input type="text" id="offerName" required placeholder="John Doe">
-      </div>
-      
-      <div class="offer-form-group">
-        <label for="offerPhone">Phone Number</label>
-        <input type="tel" id="offerPhone" required pattern="[0-9]{10}" minlength="10" maxlength="10" placeholder="10-digit mobile number" title="Please enter exactly 10 digits">
-      </div>
+  <div class="gemini-widget-container" style="margin-top: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
 
-      <div class="offer-form-row">
-        <div class="offer-form-group">
-          <label for="offerPincode">Pincode</label>
-          <input type="text" id="offerPincode" required pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="6 digits">
-        </div>
-        <div class="offer-form-group">
-          <label for="offerCity">City</label>
-          <input type="text" id="offerCity" required placeholder="Your City">
+    <!-- Simplified "Make an Offer" Button & Inline Form -->
+    {% if has_stones %}
+      <div class="gemini-offer-wrapper" style="margin-bottom: 20px;">
+        
+        <!-- Simplified Button Trigger -->
+        <button type="button" id="offerTriggerBtn" onclick="window.showOfferForm()" style="width: 100%; padding: 14px; background-color: #111827; color: #ffffff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px; letter-spacing: 0.1em; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background-color 0.2s;">
+          🏷️ Make an Offer
+        </button>
+
+        <!-- Inline Negotiation Form -->
+        <div id="offerFormState" style="display: none; border: 1px solid #e5e7eb; border-radius: 8px; background: #ffffff; padding: 20px; margin-top: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          
+          <!-- Price Comparison Header -->
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: #64748b; font-size: 14px;">
+              <span>Website Price (incl. GST):</span>
+              <span style="text-decoration: line-through; font-weight: 500;">{{ breakdown.total | times: 0.01 | money }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-weight: bold; color: #1e293b; font-size: 16px;">
+              <span>Your Offered Price (incl. GST):</span>
+              <span id="offeredTotalDisplay" style="color: #10b981;">{{ breakdown.total | times: 0.01 | money }}</span>
+            </div>
+            <div id="savingsDisplay" style="text-align: right; font-size: 12px; color: #10b981; font-weight: 600; margin-top: 6px;">
+              You save: Rs. 0.00
+            </div>
+          </div>
+
+          <form id="offerNegotiationForm" novalidate>
+            <!-- Negotiation Fields -->
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;">
+              
+              <!-- Making Charges Input -->
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: bold; color: #374151; margin-bottom: 5px;">
+                  Making Charges <span style="font-weight: normal; color: #6b7280;">(Current: {{ breakdown.making_charges | times: 0.01 | money }})</span>
+                </label>
+                <input type="number" id="offerMakingInput" value="{{ making_charges_raw | times: 0.01 | round: 2 }}" min="0" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; transition: border-color 0.2s;">
+                <div class="field-error" id="error_offerMakingInput" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid Making Charge (0 or more).</div>
+              </div>
+              
+              <!-- Dynamic Gemstones/Stones Negotiation Inputs -->
+              {% if breakdown.gemstone_details.type == 'multiple' and breakdown.gemstone_details.gemstones %}
+                {% for gem in breakdown.gemstone_details.gemstones %}
+                  <div>
+                    <label style="display: block; font-size: 12px; font-weight: bold; color: #374151; margin-bottom: 5px;">
+                      {{ gem.type | replace: '_', ' ' }} Offer <span style="font-weight: normal; color: #6b7280;">(Current: {{ gem.finalCost | times: 0.01 | money }})</span>
+                    </label>
+                    <input type="number" class="offer-gemstone-input" id="offerGemInput_{{ forloop.index }}" data-original="{{ gem.finalCost | times: 0.01 | round: 2 }}" value="{{ gem.finalCost | times: 0.01 | round: 2 }}" min="0" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; transition: border-color 0.2s;">
+                    <div class="field-error" id="error_offerGemInput_{{ forloop.index }}" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid Stone Price (0 or more).</div>
+                  </div>
+                {% endfor %}
+              {% elsif breakdown.gemstone_price > 0 %}
+                <div>
+                  <label style="display: block; font-size: 12px; font-weight: bold; color: #374151; margin-bottom: 5px;">
+                    {{ breakdown.gemstone_name | default: 'Gemstone' | replace: '_', ' ' }} Offer <span style="font-weight: normal; color: #6b7280;">(Current: {{ breakdown.gemstone_price | times: 0.01 | money }})</span>
+                  </label>
+                  <input type="number" class="offer-gemstone-input" id="offerGemInput_1" data-original="{{ breakdown.gemstone_price | times: 0.01 | round: 2 }}" value="{{ gemstone_price_raw | times: 0.01 | round: 2 }}" min="0" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; transition: border-color 0.2s;">
+                  <div class="field-error" id="error_offerGemInput_1" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid Gemstone Price (0 or more).</div>
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- Contact Details -->
+            <div style="border-top: 1px solid #f3f4f6; padding-top: 15px; margin-bottom: 20px;">
+              <h4 style="margin: 0 0 15px 0; font-size: 13px; font-weight: bold; color: #374151; text-transform: uppercase; letter-spacing: 0.05em;">
+                Contact Details
+              </h4>
+              
+              <div style="margin-bottom: 12px;">
+                <label for="negName" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">Your Name *</label>
+                <input type="text" id="negName" required placeholder="e.g. Rahul Sharma" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;">
+                <div class="field-error" id="error_negName" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid Name (letters and spaces only, min 2 chars).</div>
+              </div>
+
+              <div style="margin-bottom: 12px;">
+                <label for="negPhone" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">Phone / WhatsApp Number *</label>
+                <input type="tel" id="negPhone" required placeholder="10-digit mobile number" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;">
+                <div class="field-error" id="error_negPhone" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid 10-digit phone number.</div>
+              </div>
+
+              <div style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                  <label for="negPincode" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">Pincode *</label>
+                  <input type="text" id="negPincode" required placeholder="6 digits" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;">
+                  <div class="field-error" id="error_negPincode" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid 6-digit Pincode.</div>
+                </div>
+                <div style="flex: 1;">
+                  <label for="negCity" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">City *</label>
+                  <input type="text" id="negCity" required placeholder="Your City" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;">
+                  <div class="field-error" id="error_negCity" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid City (min 2 chars).</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Global Error and Success Messages -->
+            <div id="negErrorMsg" style="display: none; color: #b91c1c; background-color: #fef2f2; border: 1px solid #fca5a5; padding: 12px; border-radius: 6px; font-weight: 600; margin-bottom: 15px; text-align: center; font-size: 13px;"></div>
+            <div id="negSuccessMsg" style="display: none; color: #065f46; background-color: #ecfdf5; border: 1px solid #a7f3d0; padding: 12px; border-radius: 6px; font-weight: 600; margin-bottom: 15px; text-align: center; font-size: 13px;"></div>
+
+            <div style="display: flex; gap: 10px;">
+              <button type="submit" id="negSubmitBtn" style="flex: 2; padding: 12px; background-color: #10b981; color: #ffffff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px;">
+                Send Offer
+              </button>
+              <button type="button" onclick="window.hideOfferForm()" style="flex: 1; padding: 12px; background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px;">
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
       </div>
-      
-      <div class="offer-form-group">
-        <label for="offerAmount">Your Offer Amount (₹)</label>
-        <input type="number" id="offerAmount" required min="1" placeholder="Enter amount">
-      </div>
-      
-      <button type="submit" class="offer-submit-btn" id="offerSubmitBtn">Submit Offer</button>
-      
-      <div class="offer-success-msg" id="offerSuccessMsg">Your offer has been submitted! We will contact you shortly.</div>
-      <div class="offer-error-msg" id="offerErrorMsg">Something went wrong. Please try again.</div>
-    </form>
+    {% endif %}
+
   </div>
-</div>
 
-<script>
-  function relocateModal() {
-    const modal = document.getElementById('offerModal');
-    if (modal && modal.parentNode !== document.body) {
-      document.body.appendChild(modal);
-    }
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', relocateModal);
-  } else {
-    relocateModal();
-  }
-  window.addEventListener('load', relocateModal);
+  <script>
+    // Load static values
+    const GOLD_VAL = {{ metal_value_raw | times: 0.01 }};
+    const GST_PCT = {{ gst_pct_raw }};
+    const ORIGINAL_TOTAL = {{ total_original_raw | times: 0.01 }};
 
-  // Setup live input validations
-  function setupInputValidators() {
-    const nameInput = document.getElementById('offerName');
-    const phoneInput = document.getElementById('offerPhone');
-    const pincodeInput = document.getElementById('offerPincode');
-    const cityInput = document.getElementById('offerCity');
+    function calculateNegotiation() {
+      const makingInput = document.getElementById('offerMakingInput');
+      const offeredMaking = parseFloat(makingInput.value) || 0;
 
-    if (nameInput) {
-      nameInput.addEventListener('input', function() {
-        this.value = this.value.replace(/[^a-zA-Z\s.]/g, '');
+      // Sum up all dynamic gemstone/stone inputs
+      let offeredStone = 0;
+      const gemstoneInputs = document.querySelectorAll('.offer-gemstone-input');
+      gemstoneInputs.forEach(input => {
+        offeredStone += parseFloat(input.value) || 0;
       });
-    }
-    if (phoneInput) {
-      phoneInput.addEventListener('input', function() {
-        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
-      });
-    }
-    if (pincodeInput) {
-      pincodeInput.addEventListener('input', function() {
-        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
-      });
-    }
-    if (cityInput) {
-      cityInput.addEventListener('input', function() {
-        this.value = this.value.replace(/[^a-zA-Z\s]/g, '');
-      });
-    }
-  }
 
-  // Setup validators when DOM is loaded
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupInputValidators);
-  } else {
-    setupInputValidators();
-  }
+      const offeredSubtotal = GOLD_VAL + offeredMaking + offeredStone;
+      const offeredGst = offeredSubtotal * (GST_PCT / 100.0);
+      const offeredTotal = offeredSubtotal + offeredGst;
 
-  window.openOfferModal = function() {
-    relocateModal();
-    document.getElementById('offerModal').classList.add('active');
-  };
-  
-  window.closeOfferModal = function() {
-    document.getElementById('offerModal').classList.remove('active');
-    document.getElementById('offerSuccessMsg').style.display = 'none';
-    document.getElementById('offerErrorMsg').style.display = 'none';
-    document.getElementById('offerForm').reset();
-  };
-
-  // Close modal when clicking outside of it
-  window.onclick = function(event) {
-    const modal = document.getElementById('offerModal');
-    if (event.target == modal) {
-      window.closeOfferModal();
-    }
-  }
-
-  document.getElementById('offerForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const errorMsg = document.getElementById('offerErrorMsg');
-    errorMsg.style.display = 'none';
-
-    const name = document.getElementById('offerName').value.trim();
-    const phone = document.getElementById('offerPhone').value.trim();
-    const pincode = document.getElementById('offerPincode').value.trim();
-    const city = document.getElementById('offerCity').value.trim();
-    const amountVal = document.getElementById('offerAmount').value.trim();
-
-    if (name.length < 2) {
-      errorMsg.innerText = "Please enter a valid name (at least 2 letters).";
-      errorMsg.style.display = 'block';
-      return;
-    }
-    if (!phone.match(/^[0-9]{10}$/)) {
-      errorMsg.innerText = "Please enter a valid 10-digit phone number.";
-      errorMsg.style.display = 'block';
-      return;
-    }
-    if (!pincode.match(/^[0-9]{6}$/)) {
-      errorMsg.innerText = "Please enter a valid 6-digit pincode.";
-      errorMsg.style.display = 'block';
-      return;
-    }
-    if (city.length < 2) {
-      errorMsg.innerText = "Please enter a valid city name.";
-      errorMsg.style.display = 'block';
-      return;
-    }
-    
-    const amount = parseFloat(amountVal);
-    if (isNaN(amount) || amount <= 0) {
-      errorMsg.innerText = "Please enter a valid offer amount.";
-      errorMsg.style.display = 'block';
-      return;
+      // Update displays
+      document.getElementById('offeredTotalDisplay').innerText = '₹' + offeredTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      
+      const savings = ORIGINAL_TOTAL - offeredTotal;
+      const savingsDisplay = document.getElementById('savingsDisplay');
+      if (savings > 0.01) {
+        savingsDisplay.innerText = 'You save: ₹' + savings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        savingsDisplay.style.color = '#10b981';
+      } else if (savings < -0.01) {
+        savingsDisplay.innerText = 'Extra charge: ₹' + Math.abs(savings).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        savingsDisplay.style.color = '#ef4444';
+      } else {
+        savingsDisplay.innerText = 'You save: ₹0.00';
+        savingsDisplay.style.color = '#6b7280';
+      }
     }
 
-    const submitBtn = document.getElementById('offerSubmitBtn');
-    submitBtn.innerText = 'Submitting...';
-    submitBtn.disabled = true;
-    
-    document.getElementById('offerSuccessMsg').style.display = 'none';
-
-    // IMPORTANT: Make sure this is the live URL of your VPS backend
-    const APP_BACKEND_URL = 'https://api.daginawala.in/api/public/offers';
-
-    const payload = {
-      shopDomain: Shopify.shop,
-      shopProductId: '{{ product.id }}',
-      productTitle: '{{ product.title | escape }}',
-      productUrl: window.location.href,
-      customerName: name,
-      customerPhone: phone,
-      pincode: pincode,
-      city: city,
-      offerAmount: amount
+    window.showOfferForm = function() {
+      document.getElementById('offerTriggerBtn').style.display = 'none';
+      document.getElementById('offerFormState').style.display = 'block';
+      calculateNegotiation();
     };
 
-    fetch(APP_BACKEND_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
-    .then(response => response.json())
-    .then(data => {
-      submitBtn.innerText = 'Submit Offer';
-      submitBtn.disabled = false;
+    window.hideOfferForm = function() {
+      document.getElementById('offerFormState').style.display = 'none';
+      document.getElementById('offerTriggerBtn').style.display = 'flex';
       
-      if(data.success) {
-        document.getElementById('offerSuccessMsg').style.display = 'block';
-        setTimeout(window.closeOfferModal, 3000);
+      // Reset inputs & errors
+      document.getElementById('offerNegotiationForm').reset();
+      document.getElementById('negErrorMsg').style.display = 'none';
+      document.getElementById('negSuccessMsg').style.display = 'none';
+      
+      // Hide all inline error helpers
+      const errors = document.querySelectorAll('.field-error');
+      errors.forEach(e => e.style.display = 'none');
+      
+      const inputs = document.querySelectorAll('#offerNegotiationForm input');
+      inputs.forEach(i => {
+        i.style.borderColor = '#d1d5db';
+        i.style.backgroundColor = '#ffffff';
+      });
+    }
+
+    // Individual field validation rules
+    function validateField(id, validatorFn) {
+      const input = document.getElementById(id);
+      const errorDiv = document.getElementById('error_' + id);
+      if (!input) return true;
+      const isValid = validatorFn(input.value);
+      
+      if (!isValid) {
+        input.style.borderColor = '#ef4444';
+        input.style.backgroundColor = '#fef2f2';
+        if (errorDiv) errorDiv.style.display = 'block';
       } else {
-        document.getElementById('offerErrorMsg').innerText = data.error || 'Something went wrong.';
-        document.getElementById('offerErrorMsg').style.display = 'block';
+        input.style.borderColor = '#10b981';
+        input.style.backgroundColor = '#f0fdf4';
+        if (errorDiv) errorDiv.style.display = 'none';
       }
-    })
-    .catch(error => {
-      console.error('Offer error:', error);
-      submitBtn.innerText = 'Submit Offer';
-      submitBtn.disabled = false;
-      document.getElementById('offerErrorMsg').innerText = 'Connection error. Please try again.';
-      document.getElementById('offerErrorMsg').style.display = 'block';
-    });
-  });
-</script>
+      return isValid;
+    }
+
+    const validators = {
+      offerMakingInput: val => {
+        const num = parseFloat(val);
+        return !isNaN(num) && num >= 0;
+      },
+      negName: val => {
+        return /^[a-zA-Z\s.]{2,50}$/.test(val.trim());
+      },
+      negPhone: val => {
+        return /^[0-9]{10}$/.test(val.trim());
+      },
+      negPincode: val => {
+        return /^[0-9]{6}$/.test(val.trim());
+      },
+      negCity: val => {
+        return /^[a-zA-Z\s]{2,50}$/.test(val.trim());
+      }
+    };
+
+    function setupNegotiationListeners() {
+      const makingInput = document.getElementById('offerMakingInput');
+      const gemstoneInputs = document.querySelectorAll('.offer-gemstone-input');
+      const nameInput = document.getElementById('negName');
+      const phoneInput = document.getElementById('negPhone');
+      const pincodeInput = document.getElementById('negPincode');
+      const cityInput = document.getElementById('negCity');
+
+      // Calc listeners
+      if (makingInput) {
+        makingInput.addEventListener('input', () => {
+          calculateNegotiation();
+          validateField('offerMakingInput', validators.offerMakingInput);
+        });
+      }
+      
+      gemstoneInputs.forEach(input => {
+        input.addEventListener('input', () => {
+          calculateNegotiation();
+          const id = input.id;
+          validateField(id, val => {
+            const num = parseFloat(val);
+            return !isNaN(num) && num >= 0;
+          });
+        });
+      });
+
+      // Character restriction listeners
+      if (nameInput) {
+        nameInput.addEventListener('input', function() {
+          this.value = this.value.replace(/[^a-zA-Z\s.]/g, '');
+          validateField('negName', validators.negName);
+        });
+      }
+      if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+          this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+          validateField('negPhone', validators.negPhone);
+        });
+      }
+      if (pincodeInput) {
+        pincodeInput.addEventListener('input', function() {
+          this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+          validateField('negPincode', validators.negPincode);
+        });
+      }
+      if (cityInput) {
+        cityInput.addEventListener('input', function() {
+          this.value = this.value.replace(/[^a-zA-Z\s]/g, '');
+          validateField('negCity', validators.negCity);
+        });
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupNegotiationListeners);
+    } else {
+      setupNegotiationListeners();
+    }
+
+    const offerForm = document.getElementById('offerNegotiationForm');
+    if (offerForm) {
+      offerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const errorMsg = document.getElementById('negErrorMsg');
+        const successMsg = document.getElementById('negSuccessMsg');
+        errorMsg.style.display = 'none';
+        successMsg.style.display = 'none';
+
+        // Run all validations
+        let formValid = true;
+        
+        formValid = validateField('offerMakingInput', validators.offerMakingInput) && formValid;
+        
+        const gemstoneInputs = document.querySelectorAll('.offer-gemstone-input');
+        gemstoneInputs.forEach(input => {
+          const isValidGem = validateField(input.id, val => {
+            const num = parseFloat(val);
+            return !isNaN(num) && num >= 0;
+          });
+          formValid = isValidGem && formValid;
+        });
+
+        formValid = validateField('negName', validators.negName) && formValid;
+        formValid = validateField('negPhone', validators.negPhone) && formValid;
+        formValid = validateField('negPincode', validators.negPincode) && formValid;
+        formValid = validateField('negCity', validators.negCity) && formValid;
+
+        if (!formValid) {
+          errorMsg.innerText = "Please fix the highlighted errors before submitting.";
+          errorMsg.style.display = 'block';
+          return;
+        }
+
+        const name = document.getElementById('negName').value.trim();
+        const phone = document.getElementById('negPhone').value.trim();
+        const pincode = document.getElementById('negPincode').value.trim();
+        const city = document.getElementById('negCity').value.trim();
+        
+        const offeredMaking = parseFloat(document.getElementById('offerMakingInput').value) || 0;
+        
+        let offeredStone = 0;
+        gemstoneInputs.forEach(input => {
+          offeredStone += parseFloat(input.value) || 0;
+        });
+
+        const offeredSubtotal = GOLD_VAL + offeredMaking + offeredStone;
+        const offeredTotal = offeredSubtotal * (1 + (GST_PCT / 100.0));
+
+        const submitBtn = document.getElementById('negSubmitBtn');
+        submitBtn.innerText = 'SENDING...';
+        submitBtn.disabled = true;
+
+        const payload = {
+          shopDomain: Shopify.shop,
+          shopProductId: '{{ product.id }}',
+          productTitle: '{{ product.title | escape }}',
+          productUrl: window.location.href,
+          customerName: name,
+          customerPhone: phone,
+          pincode: pincode,
+          city: city,
+          offerAmount: parseFloat(offeredTotal.toFixed(2))
+        };
+
+        fetch('https://api.daginawala.in/api/public/offers', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(errData => {
+              throw new Error(errData.error || 'Server error.');
+            });
+          }
+          return response.json();
+        })
+        .then(data => {
+          submitBtn.innerText = 'Send Offer';
+          submitBtn.disabled = false;
+          
+          if (data.success) {
+            successMsg.innerText = 'Your custom offer has been submitted! We will contact you shortly.';
+            successMsg.style.display = 'block';
+            setTimeout(window.hideOfferForm, 3500);
+          } else {
+            errorMsg.innerText = data.error || 'Something went wrong.';
+            errorMsg.style.display = 'block';
+          }
+        })
+        .catch(error => {
+          console.error('Offer submission error:', error);
+          submitBtn.innerText = 'Send Offer';
+          submitBtn.disabled = false;
+          errorMsg.innerText = error.message || 'Connection error. Please try again.';
+          errorMsg.style.display = 'block';
+        });
+      });
+    }
+  </script>
 {% endif %}
