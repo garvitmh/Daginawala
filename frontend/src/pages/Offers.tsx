@@ -276,17 +276,7 @@ export default function Offers() {
                         <BlockStack gap="400">
                             {successBannerMessage && (
                                 <Banner tone="success" onDismiss={() => setSuccessBannerMessage('')}>
-                                    <BlockStack gap="200">
-                                        <Text as="p" fontWeight="bold">{successBannerMessage}</Text>
-                                        <InlineStack gap="200">
-                                            <Button url={approvedLink} target="_blank" size="micro">Go to Checkout</Button>
-                                            <Button onClick={() => {
-                                                navigator.clipboard.writeText(approvedLink);
-                                                setCopied(true);
-                                                setTimeout(() => setCopied(false), 2000);
-                                            }} size="micro">{copied ? 'Copied!' : 'Copy Link'}</Button>
-                                        </InlineStack>
-                                    </BlockStack>
+                                    <Text as="p" fontWeight="bold">{successBannerMessage}</Text>
                                 </Banner>
                             )}
                             <InlineStack align="space-between">
