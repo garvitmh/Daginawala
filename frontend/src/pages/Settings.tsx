@@ -125,6 +125,13 @@ export default function Settings() {
     const handleSave = async () => {
         setLoading(true);
         setErrorMessage('');
+        
+        if (settings.emailNotifications && (!settings.notificationEmail || !settings.notificationEmail.trim())) {
+            setErrorMessage('Please enter a Notification Email Address to receive email alerts.');
+            setLoading(false);
+            return;
+        }
+
         const jsonStr = textToJsonMapping(mappingText);
         if (jsonStr === null) {
             setErrorMessage('Invalid Making Charge Bubbles format. Please use "BaseRate: Option1, Option2..." format (e.g. 1500: 1500, 1350, 1200).');
