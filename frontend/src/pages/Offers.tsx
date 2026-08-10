@@ -61,6 +61,7 @@ export default function Offers() {
     const [approvedLink, setApprovedLink] = useState('');
     const [successBannerMessage, setSuccessBannerMessage] = useState('');
     const [copied, setCopied] = useState(false);
+    const [emailInputVal, setEmailInputVal] = useState('');
 
     useEffect(() => {
         fetchOffers();
@@ -88,9 +89,20 @@ export default function Offers() {
                 await fetchOffers();
                 setIsCounterModalOpen(false);
                 setCounterPrice('');
+                
+                const updatedOffer = response.data.offer;
                 if (status === 'approved' && response.data.invoiceUrl) {
                     setApprovedLink(response.data.invoiceUrl);
-                    setSuccessBannerMessage('Offer Approved successfully! Shopify checkout link created.');
+                    
+                    let msg = 'Offer Approved successfully! Shopify checkout link created.';
+                    if (updatedOffer.customerEmail) {
+                        msg += ' Invoice email automatically sent to customer.';
+                    }
+                    setSuccessBannerMessage(msg);
+                    setActiveOffer(updatedOffer);
+                    
+                    // Automatically trigger WhatsApp redirect template for user ease
+                    handleWhatsAppRedirect(updatedOffer);
                 } else {
                     setIsDetailModalOpen(false);
                 }
@@ -126,8 +138,25 @@ export default function Offers() {
             : offer.shopifyDraftOrderId || '';
             
         setApprovedLink(checkoutLink);
+        setEmailInputVal(offer.customerEmail || '');
         setSuccessBannerMessage('');
         setIsDetailModalOpen(true);
+    };
+
+    const handleSendEmailInvoice = async () => {
+        if (!activeOffer) return;
+        setLoadingAction(true);
+        try {
+            await api.post(`/offers/${activeOffer.id}/send-email`, { email: emailInputVal });
+            setSuccessBannerMessage('Shopify invoice email sent to customer successfully!');
+            // Update local state
+            setActiveOffer(prev => prev ? { ...prev, customerEmail: emailInputVal } : null);
+            setOffers(prev => prev.map(o => o.id === activeOffer.id ? { ...o, customerEmail: emailInputVal } : o));
+        } catch (err: any) {
+            alert(err.response?.data?.error || 'Failed to send invoice email.');
+        } finally {
+            setLoadingAction(false);
+        }
     };
 
     const handleWhatsAppRedirect = (offer: Offer) => {
@@ -237,23 +266,6 @@ export default function Offers() {
                             content: 'Contact via WhatsApp',
                             onAction: () => handleWhatsAppRedirect(activeOffer)
                         },
-                        ...(activeOffer.status.toLowerCase() === 'approved' && activeOffer.customerEmail ? [
-                            {
-                                content: 'Email Invoice to Customer',
-                                loading: loadingAction,
-                                onAction: async () => {
-                                    setLoadingAction(true);
-                                    try {
-                                        await api.post(`/offers/${activeOffer.id}/send-email`);
-                                        setSuccessBannerMessage('Shopify invoice email sent to customer successfully!');
-                                    } catch (err: any) {
-                                        alert(err.response?.data?.error || 'Failed to send invoice email.');
-                                    } finally {
-                                        setLoadingAction(false);
-                                    }
-                                }
-                            }
-                        ] : []),
                         {
                             content: 'Close',
                             onAction: () => setIsDetailModalOpen(false)
@@ -290,13 +302,54 @@ export default function Offers() {
                                 <div style={{ textAlign: 'right' }}>
                                     <Text variant="headingSm" as="h3">Status</Text>
                                     <Badge tone={getStatusBadgeTone(activeOffer.status)}>{activeOffer.status.toUpperCase()}</Badge>
-                                    {approvedLink && (
-                                         <div style={{ marginTop: '8px' }}>
-                                             <Button url={approvedLink} target="_blank" size="micro">Checkout Link</Button>
-                                         </div>
-                                     )}
                                 </div>
                             </InlineStack>
+
+                            {approvedLink && (
+                                <div style={{ border: '1px dashed #d1d5db', borderRadius: '8px', padding: '12px', background: '#fafbfb', marginTop: '10px' }}>
+                                    <BlockStack gap="200">
+                                        <Text variant="headingSm" as="h4">Checkout Link & Email Dispatch</Text>
+                                        <TextField
+                                            label="Shopify Checkout Link"
+                                            labelHidden
+                                            value={approvedLink}
+                                            readOnly
+                                            autoComplete="off"
+                                            connectedRight={
+                                                <InlineStack gap="100">
+                                                    <Button onClick={() => {
+                                                        navigator.clipboard.writeText(approvedLink);
+                                                        setCopied(true);
+                                                        setTimeout(() => setCopied(false), 2000);
+                                                    }}>
+                                                        {copied ? 'Copied!' : 'Copy Link'}
+                                                    </Button>
+                                                    <Button url={approvedLink} target="_blank">Open Checkout</Button>
+                                                </InlineStack>
+                                            }
+                                        />
+                                        
+                                        <div style={{ marginTop: '5px' }}>
+                                            <TextField
+                                                label="Email Invoice to Customer"
+                                                value={emailInputVal}
+                                                onChange={(val) => setEmailInputVal(val)}
+                                                placeholder="customer@example.com"
+                                                autoComplete="email"
+                                                connectedRight={
+                                                    <Button 
+                                                        loading={loadingAction}
+                                                        onClick={handleSendEmailInvoice}
+                                                        disabled={!emailInputVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInputVal)}
+                                                    >
+                                                        Send Invoice Email
+                                                    </Button>
+                                                }
+                                            />
+                                        </div>
+                                    </BlockStack>
+                                </div>
+                            )}
 
                             <Divider />
 

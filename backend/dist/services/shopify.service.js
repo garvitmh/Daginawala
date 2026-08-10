@@ -788,13 +788,38 @@ class ShopifyService {
         }
     }
 
-    async sendDraftOrderInvoiceEmail(draftOrderId, customMessage) {
+    async updateDraftOrderEmail(draftOrderId, email) {
         try {
+            const payload = {
+                draft_order: {
+                    email: email
+                }
+            };
+            await axios_1.default.put(
+                `https://${this.domain}/admin/api/2024-01/draft_orders/${draftOrderId}.json`,
+                payload,
+                { headers: ShopifyService.getHeaders(this.accessToken) }
+            );
+            return { success: true };
+        } catch (error) {
+            console.error('[SHOPIFY] Failed to update draft order email:', error.response?.data || error.message);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async sendDraftOrderInvoiceEmail(draftOrderId, customMessage, toEmail) {
+        try {
+            if (toEmail) {
+                await this.updateDraftOrderEmail(draftOrderId, toEmail);
+            }
             const payload = {
                 draft_order_invoice: {}
             };
             if (customMessage) {
                 payload.draft_order_invoice.custom_message = customMessage;
+            }
+            if (toEmail) {
+                payload.draft_order_invoice.to = toEmail;
             }
             const response = await axios_1.default.post(
                 `https://${this.domain}/admin/api/2024-01/draft_orders/${draftOrderId}/send_invoice.json`,
