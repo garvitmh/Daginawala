@@ -14,8 +14,8 @@ console.log('Connecting to VPS...');
 const conn = new Client();
 
 conn.on('ready', () => {
-  console.log('Connected! Finding MAKE AN OFFER text in liquid files on VPS...');
-  conn.exec('grep -ri "make an offer" /root/gemini-app/shopify-liquid-templates/', (err, stream) => {
+  console.log('Connected! Finding "Hello AKD Team" text in frontend files on VPS...');
+  conn.exec('grep -ri "Hello AKD Team" /root/gemini-app/frontend/src/', (err, stream) => {
     if (err) {
       console.error('Exec error:', err);
       conn.end();

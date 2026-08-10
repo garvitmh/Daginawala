@@ -175,11 +175,19 @@ export default function Offers() {
             ? offer.shopifyDraftOrderId.split('|')[1] 
             : offer.shopifyDraftOrderId || '';
             
+        // Use active screen price inputs if available
+        let targetPrice = offer.offerAmount;
+        if (statusLower === 'approved') {
+            targetPrice = parseFloat(approvedPrice) || offer.offerAmount;
+        } else if (statusLower === 'counter_sent') {
+            targetPrice = offer.counterAmount || parseFloat(counterPrice) || offer.offerAmount;
+        }
+            
         const text = `Hello ${offer.customerName}, regarding your offer ${offer.offerId} for ${offer.product.title}:\n\n` +
             (statusLower === 'approved' 
-                ? `We have approved your offer of ${formatCurrency(offer.offerAmount)}! You can checkout here:\n${checkoutLink}` 
+                ? `We have approved your offer of ${formatCurrency(targetPrice)}! You can checkout here:\n${checkoutLink}` 
                 : (statusLower === 'counter_sent' 
-                    ? `We would like to make a counter offer of ${formatCurrency(offer.counterAmount)}.`
+                    ? `We would like to make a counter offer of ${formatCurrency(targetPrice)}.`
                     : `We are currently reviewing your offer.`));
         
         const url = `https://wa.me/${offer.customerPhone.startsWith('+') ? offer.customerPhone : '+91' + offer.customerPhone}?text=${encodeURIComponent(text)}`;
