@@ -7,7 +7,7 @@
   Installation:
   1. Replace the entire content of snippets/gemini-price-breakdown-enhanced.liquid with this code.
   2. In sections/main-product.liquid, render it using:
-     {% render 'gemini-price-breakdown-enhanced' %}
+     {% render 'gemini-price-breakdown-enhanced', product: product %}
 {% endcomment %}
 
 {% assign current_variant = variant | default: product.selected_or_first_available_variant %}
@@ -35,20 +35,16 @@
   <div class="gemini-widget-container" style="margin-top: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
 
     <!-- Simplified "Make an Offer" Button & Inline Form -->
-    <div class="gemini-offer-wrapper" style="margin-bottom: 20px;">
-        
-        <!-- Simplified Button Trigger -->
-        <button type="button" id="offerTriggerBtn" onclick="window.showOfferForm()" style="width: 100%; padding: 14px; background-color: #111827; color: #ffffff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px; letter-spacing: 0.1em; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background-color 0.2s;">
-          Make an Offer
-        </button>
-
-        <!-- Simplified Button Trigger -->
-        <button type="button" id="offerTriggerBtn" onclick="window.showOfferForm()" style="width: 100%; padding: 14px; background-color: #111827; color: #ffffff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px; letter-spacing: 0.1em; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background-color 0.2s;">
-          Make an Offer
-        </button>
+    {% if product.metafields.custom.enable_offer.value == true or product.metafields.custom.enable_offer.value == 'true' %}
+      <div class="gemini-offer-wrapper" style="margin-bottom: 20px;">
+          
+          <!-- Simplified Button Trigger -->
+          <button type="button" id="offerTriggerBtn" onclick="window.showOfferForm()" style="width: 100%; padding: 14px; background-color: #111827; color: #ffffff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px; letter-spacing: 0.1em; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background-color 0.2s;">
+            Make an Offer
+          </button>
 
         <!-- Modal Backdrop Overlay (hidden by default) -->
-        <div id="makeOfferModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.5); z-index: 100000; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.3s ease-in-out;">
+        <div id="makeOfferModalOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 100000; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.3s ease-in-out;">
           <!-- Modal Content Container -->
           <div style="background: #ffffff; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 25px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.15); animation: modalSlideIn 0.3s ease-out; box-sizing: border-box; text-align: left;">
             
@@ -193,15 +189,22 @@
             </div>
 
           </div>
-        </div>51 4.92 1.453 5.461 0 9.902-4.444 9.905-9.906.002-2.646-1.026-5.133-2.897-7.006C16.687 1.82 14.204.793 11.562.793 6.103.793 1.66 5.237 1.657 10.697c-.001 1.815.485 3.591 1.411 5.161l-.963 3.517 3.606-.946zm11.45-6.905c-.328-.164-1.94-.959-2.241-1.07-.301-.11-.52-.164-.738.164-.219.329-.848 1.07-1.04 1.289-.192.219-.384.246-.712.082-1.393-.698-2.39-1.22-3.32-2.825-.24-.411-.024-.633.2-.856.2-.2.438-.507.658-.76.22-.253.293-.432.438-.72.146-.288.073-.541-.036-.76-.11-.22-.924-2.227-1.267-3.052-.334-.805-.672-.695-.924-.708-.239-.012-.513-.014-.788-.014-.275 0-.72.103-1.096.513-.377.411-1.44 1.408-1.44 3.434 0 2.026 1.474 3.985 1.679 4.26.205.275 2.9 4.428 7.027 6.21 4.127 1.782 4.127 1.188 4.881 1.117.753-.07 2.427-.992 2.766-1.954.34-.962.34-1.788.238-1.96-.102-.172-.383-.282-.71-.446z"/></svg>
-            Continue on WhatsApp
-          </button>
         </div>
       </div>
     </div>
+  {% endif %}
 
-    <!-- Collapsible Price Breakdown Section -->
-    <div class="gemini-price-breakdown" style="border: 1px solid #e1e3e5; border-radius: 8px; overflow: hidden; background: #ffffff;">
+    {% assign show_breakdown = true %}
+    {% if product.metafields.custom.enable_breakdown.value == false or product.metafields.custom.enable_breakdown.value == 'false' %}
+      {% assign show_breakdown = false %}
+    {% endif %}
+    {% if total_original_raw <= 0 %}
+      {% assign show_breakdown = false %}
+    {% endif %}
+
+    {% if show_breakdown %}
+      <!-- Collapsible Price Breakdown Section -->
+      <div class="gemini-price-breakdown" style="border: 1px solid #e1e3e5; border-radius: 8px; overflow: hidden; background: #ffffff;">
       
       <div style="background-color: #f9fafb; margin: 0; padding: 12px 16px; font-size: 15px; border-bottom: 1px solid #e1e3e5; font-weight: 600; display: flex; justify-content: space-between; align-items: center; user-select: none;">
         <span>Price Breakdown</span>
@@ -329,6 +332,7 @@
       </div>
 
     </div>
+    {% endif %}
 
   </div>
 
@@ -354,6 +358,7 @@
 
     let selectedMakingRate = "{{ breakdown.making_charge_bubbles[0] }}";
     let selectedStoneDiscount = "0%";
+    let lastCalculatedBreakdown = null;
 
     window.selectMakingBubble = function(buttonElement) {
       // Toggle active states in UI
@@ -413,6 +418,7 @@
       .then(data => {
         displayTotal.style.opacity = '1';
         if (data.success && data.breakdown) {
+          lastCalculatedBreakdown = data.breakdown;
           const offeredTotal = data.breakdown.total / 100;
           displayTotal.innerText = '₹' + offeredTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
           
@@ -511,6 +517,12 @@
     };
 
     function setupNegotiationListeners() {
+      // Move modal to body to prevent clipping and layout distortion from relative parent containers
+      const modal = document.getElementById('makeOfferModalOverlay');
+      if (modal && modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+      }
+
       const nameInput = document.getElementById('negName');
       const phoneInput = document.getElementById('negPhone');
       const emailInput = document.getElementById('negEmail');
@@ -636,17 +648,51 @@
             if (data.whatsappNotifications && data.notificationWhatsapp) {
               whatsAppBtn.style.display = 'flex';
               whatsAppBtn.onclick = function() {
-                const waText = `Hello AKD Team,\n\n` +
+                let waText = `Hello AKD Team,\n\n` +
                   `I have submitted an offer.\n\n` +
                   `Offer ID: ${data.offerId}\n` +
                   `Product: ${PRODUCT_TITLE}\n` +
-                  `SKU: ${PRODUCT_SKU}\n` +
-                  `Current Price: ₹${BASE_PRICE.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n` +
-                  `My Offer:\n` +
-                  `Making: ₹${selectedMakingRate}/g\n` +
-                  `Stone: ${selectedStoneDiscount}\n` +
-                  `Estimated Total: ₹${data.offerAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n` +
-                  `Customer: ${name}\n` +
+                  `SKU: ${PRODUCT_SKU}\n\n`;
+
+                if (lastCalculatedBreakdown) {
+                  const b = lastCalculatedBreakdown;
+                  const metalVal = (b.metal_value / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const metalRate = (b.metal_rate / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const makingVal = (b.making_charges / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const makingRateVal = b.making_charge_type === 'percent' 
+                    ? `${b.making_charge_rate}%`
+                    : `₹${b.making_charge_rate}/g`;
+                  const wastageVal = (b.wastage_amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const gstVal = (b.gst_amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const gemstoneVal = (b.gemstone_price / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const totalVal = (b.total / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+
+                  waText += `--- PRICING BREAKDOWN ---\n` +
+                    `🪙 Metal: ${b.metal_name || 'Gold'} (Gross: ${b.gross_weight || 0}g, Net: ${b.net_weight || 0}g)\n` +
+                    `🪙 Metal Price: ₹${metalVal} (@ ₹${metalRate}/g)\n` +
+                    `🛠️ Making Charges: ₹${makingVal} (@ ${makingRateVal})\n` +
+                    `🌾 Wastage: ₹${wastageVal} (${b.wastage_pct || 0}%)\n` +
+                    `💎 Gemstones: ₹${gemstoneVal}\n`;
+
+                  // Add gemstone details if present
+                  if (b.gemstone_details && b.gemstone_details.gemstones && b.gemstone_details.gemstones.length > 0) {
+                    b.gemstone_details.gemstones.forEach(gem => {
+                      const gemCost = (gem.finalCost / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                      waText += `  └ ${gem.type} (${gem.gemstonePieces || 0} pcs, ${gem.gemstoneWeight || 0} ct): ₹${gemCost}\n`;
+                    });
+                  }
+
+                  waText += `🧾 GST (${b.gst_pct}%): ₹${gstVal}\n\n` +
+                    `💰 Estimated Total: ₹${totalVal}\n\n`;
+                } else {
+                  waText += `Current Price: ₹${BASE_PRICE.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n` +
+                    `My Offer:\n` +
+                    `Making: ₹${selectedMakingRate}/g\n` +
+                    `Stone: ${selectedStoneDiscount}\n` +
+                    `Estimated Total: ₹${data.offerAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n`;
+                }
+
+                waText += `Customer: ${name}\n` +
                   `Phone: ${phone}\n\n` +
                   `Please review.\n\n` +
                   `Thank you.`;

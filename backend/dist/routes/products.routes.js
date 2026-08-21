@@ -218,7 +218,8 @@ router.put('/:id', async (req, res) => {
             gstPct,
             minOfferAmount,
             maxOffersPerUser,
-            enableOffer
+            enableOffer,
+            enableBreakdown
         } = req.body;
 
         // Update product data
@@ -257,7 +258,8 @@ router.put('/:id', async (req, res) => {
             gstPct: gstPct !== undefined ? gstPct : existingProduct.gstPct,
             minOfferAmount: minOfferAmount !== undefined ? minOfferAmount : existingProduct.minOfferAmount,
             maxOffersPerUser: maxOffersPerUser !== undefined ? maxOffersPerUser : existingProduct.maxOffersPerUser,
-            enableOffer: enableOffer !== undefined ? enableOffer : existingProduct.enableOffer
+            enableOffer: enableOffer !== undefined ? enableOffer : existingProduct.enableOffer,
+            enableBreakdown: enableBreakdown !== undefined ? enableBreakdown : existingProduct.enableBreakdown
         };
 
         // Update the product in database (without price yet)

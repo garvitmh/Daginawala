@@ -251,6 +251,7 @@ model Product {
   minOfferAmount                Float?
   maxOffersPerUser              Int?
   enableOffer                   Boolean           @default(false)
+  enableBreakdown               Boolean           @default(true)
   priceHistory                  PriceHistory[]
   makingGroup                   MakingGroup?      @relation(fields: [makingGroupId], references: [id])
   shop                          Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)

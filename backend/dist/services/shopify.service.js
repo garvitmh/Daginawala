@@ -311,8 +311,10 @@ class ShopifyService {
                         
                         if (product.shopifyProductId) {
                             mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "enable_offer", value: product.enableOffer ? "true" : "false", type: "boolean" });
+                            mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "enable_breakdown", value: product.enableBreakdown !== false ? "true" : "false", type: "boolean" });
                         } else {
                             mfs.push({ ownerId: gid, namespace: "custom", key: "enable_offer", value: product.enableOffer ? "true" : "false", type: "boolean" });
+                            mfs.push({ ownerId: gid, namespace: "custom", key: "enable_breakdown", value: product.enableBreakdown !== false ? "true" : "false", type: "boolean" });
                         }
                     }
 
@@ -751,7 +753,8 @@ class ShopifyService {
                             price: parseFloat(customPrice).toFixed(2)
                         }
                     ],
-                    use_customer_default_address: true
+                    use_customer_default_address: true,
+                    taxes_included: true
                 }
             };
 

@@ -106,6 +106,7 @@ interface Product {
     minOfferAmount?: number;
     maxOffersPerUser?: number;
     enableOffer?: boolean;
+    enableBreakdown?: boolean;
 }
 
 interface MakingGroup {
@@ -209,6 +210,7 @@ export default function Products() {
     const [editMinOfferAmount, setEditMinOfferAmount] = useState('');
     const [editMaxOffersPerUser, setEditMaxOffersPerUser] = useState('');
     const [editEnableOffer, setEditEnableOffer] = useState(false);
+    const [editEnableBreakdown, setEditEnableBreakdown] = useState(true);
 
     const [editGemstoneCaratRange, setEditGemstoneCaratRange] = useState('');
     const [editStonePieces, setEditStonePieces] = useState('');
@@ -823,6 +825,7 @@ export default function Products() {
         setEditMinOfferAmount(product.minOfferAmount?.toString() || '');
         setEditMaxOffersPerUser(product.maxOffersPerUser?.toString() || '');
         setEditEnableOffer(product.enableOffer || false);
+        setEditEnableBreakdown(product.enableBreakdown !== false);
 
 
         setEditEnamelColor(product.enamelColor || '');
@@ -882,6 +885,7 @@ export default function Products() {
                 minOfferAmount: editMinOfferAmount ? parseFloat(String(editMinOfferAmount)) : null,
                 maxOffersPerUser: editMaxOffersPerUser ? parseInt(String(editMaxOffersPerUser), 10) : null,
                 enableOffer: editEnableOffer,
+                enableBreakdown: editEnableBreakdown,
                 enamelColor: editEnamelColor || null,
 
                 enamelWeightGrams: editEnamelWeightGrams ? parseFloat(editEnamelWeightGrams) : null,
@@ -1935,6 +1939,13 @@ export default function Products() {
                                     checked={editEnableOffer}
                                     onChange={setEditEnableOffer}
                                     helpText="When enabled, this allows customers to negotiate the price of this specific product."
+                                />
+
+                                <Checkbox
+                                    label="Enable Price Breakdown Table"
+                                    checked={editEnableBreakdown}
+                                    onChange={setEditEnableBreakdown}
+                                    helpText="When enabled, this shows the detailed price components list to customers."
                                 />
 
                                 {editEnableOffer && (

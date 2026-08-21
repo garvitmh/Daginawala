@@ -2403,11 +2403,13 @@ app.post('/api/settings/apply-to-all', async (req, res) => {
             }
         };
 
-        // Process in batches of BATCH_SIZE concurrently
-        for (let i = 0; i < products.length; i += BATCH_SIZE) {
-            const batch = products.slice(i, i + BATCH_SIZE);
-            await Promise.all(batch.map(processSingleProduct));
-            console.log(`   ⚡ Progress: ${Math.min(i + BATCH_SIZE, products.length)}/${products.length}`);
+        // Process sequentially (1-by-1) to avoid SQLite locking and database timeouts
+        for (let i = 0; i < products.length; i++) {
+            const product = products[i];
+            await processSingleProduct(product);
+            // Delay 50ms between items to let the database and Shopify API breathe
+            await new Promise(resolve => setTimeout(resolve, 50));
+            console.log(`   ⚡ Progress: ${i + 1}/${products.length}`);
         }
 
         console.log(`✅ Applied to ${successCount} products`);
