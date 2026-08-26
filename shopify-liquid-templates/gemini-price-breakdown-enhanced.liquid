@@ -65,8 +65,28 @@
                   <span>Your Offered Price (incl. GST):</span>
                   <span id="offeredTotalDisplay" style="color: #10b981;">{{ breakdown.total | money }}</span>
                 </div>
-                <div id="savingsDisplay" style="text-align: right; font-size: 12px; color: #10b981; font-weight: 600; margin-top: 6px;">
+                <div id="savingsDisplay" style="text-align: right; font-size: 12px; color: #10b981; font-weight: 600; margin-top: 6px; margin-bottom: 12px;">
                   You save: Rs. 0.00
+                </div>
+
+                <!-- Detailed Breakdown inside Modal (Dynamic) -->
+                <div id="modalOfferDetailBreakdown" style="border-top: 1px dashed #cbd5e1; padding-top: 10px; font-size: 13px; color: #475569; display: flex; flex-direction: column; gap: 6px;">
+                  <div style="display: flex; justify-content: space-between;">
+                    <span>🪙 Gold Price (Fixed):</span>
+                    <span id="modalGoldVal">{{ breakdown.metal_value | money }}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span>🛠️ Making Charges:</span>
+                    <span id="modalMakingVal">{{ breakdown.making_charges | money }}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span>💎 Gemstones:</span>
+                    <span id="modalGemstoneVal">{{ breakdown.gemstone_price | money }}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span>🧾 GST ({{ breakdown.gst_pct }}%):</span>
+                    <span id="modalGstVal">{% assign gst_val = breakdown.gst_amount | default: breakdown.gst | default: 0 %}{{ gst_val | money }}</span>
+                  </div>
                 </div>
               </div>
 
@@ -237,13 +257,7 @@
               </td>
             </tr>
             
-            <!-- Wastage Row -->
-            <tr style="border-bottom: 1px solid #f1f2f3;">
-              <td style="padding: 10px 16px; color: #374151;">Wastage ({{ breakdown.wastage_pct }}%)</td>
-              <td style="padding: 10px 16px; text-align: right; font-weight: 500;">
-                {{ breakdown.wastage_amount | money }}
-              </td>
-            </tr>
+
 
             <!-- Gemstones Support -->
             {% if breakdown.gemstone_details.type == 'multiple' and breakdown.gemstone_details.gemstones %}
@@ -431,6 +445,15 @@
             savingsDisplay.innerText = 'You save: ₹0.00';
             savingsDisplay.style.color = '#6b7280';
           }
+
+          // Dynamically update the itemized details in the offer modal
+          const formatCurrency = (val) => {
+            return '₹' + (val / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          };
+          document.getElementById('modalGoldVal').innerText = formatCurrency(data.breakdown.metal_value);
+          document.getElementById('modalMakingVal').innerText = formatCurrency(data.breakdown.making_charges);
+          document.getElementById('modalGemstoneVal').innerText = formatCurrency(data.breakdown.gemstone_price);
+          document.getElementById('modalGstVal').innerText = formatCurrency(data.breakdown.gst_amount);
         }
       })
       .catch(err => {
