@@ -1397,15 +1397,27 @@ export default function Products() {
                             onClick={() => toggleGroup(groupId)}
                             icon={isExpanded ? ChevronDownIcon : ChevronRightIcon}
                         />
-                        <div style={{ whiteSpace: 'normal', textAlign: 'left', maxWidth: '400px', cursor: 'pointer' }} onClick={() => toggleGroup(groupId)}>
+                        <div style={{ whiteSpace: 'normal', textAlign: 'left', maxWidth: '350px', cursor: 'pointer' }} onClick={() => toggleGroup(groupId)}>
                             <Text as="span" variant="bodyLg" fontWeight="semibold">{baseName}</Text>
                         </div>
                         <div style={{ flexShrink: 0 }}>
-                            <Badge tone="info">{`${groupProducts.length} variants`}</Badge>
+                            <Badge tone="info">{`${groupProducts.length} variant${groupProducts.length > 1 ? 's' : ''}`}</Badge>
                         </div>
                     </InlineStack>
                 </div>,
-                '', '', '', '', '', '',
+                '', '', '', '', '',
+                groupProducts.length === 1 ? (
+                    <div style={{ minWidth: '110px', display: 'flex', gap: '4px' }}>
+                        <Button
+                            size="slim"
+                            icon={UploadIcon}
+                            onClick={() => handlePushSingleProduct(representative.id, representative.sku)}
+                            accessibilityLabel="Push to Shopify"
+                        />
+                        <Button size="slim" icon={EditIcon} onClick={() => handleEditProduct(representative)} accessibilityLabel="Edit Product" />
+                        <Button size="slim" tone="critical" icon={DeleteIcon} onClick={() => handleDeleteProduct(representative.id)} accessibilityLabel="Delete Product" />
+                    </div>
+                ) : '',
             ]);
 
             if (isExpanded) {
@@ -1425,47 +1437,54 @@ export default function Products() {
                         />,
                         '',
                         '',
-                        <div key={variant.id}>
-                            <InlineStack gap="100">
-                                <Badge tone={variant.status === 'active' ? 'success' : 'attention'}>
+                        <div key={variant.id} style={{ minWidth: '130px' }}>
+                            <BlockStack gap="050">
+                                <Badge tone={variant.status === 'active' ? 'success' : 'attention'} size="small">
                                     {variant.status?.toUpperCase()}
                                 </Badge>
-                                <div 
-                                    style={{ cursor: 'pointer' }}
-                                    title="Click to toggle Price Breakdown on storefront"
-                                    onClick={() => handleQuickSingleToggle(variant.id, 'enableBreakdown', variant.enableBreakdown !== false)}
-                                >
-                                    <Badge tone={variant.enableBreakdown !== false ? 'success' : undefined}>
-                                        {variant.enableBreakdown !== false ? 'Breakdown ON' : 'Breakdown OFF'}
-                                    </Badge>
-                                </div>
-                                <div 
-                                    style={{ cursor: 'pointer' }}
-                                    title="Click to toggle Make An Offer on storefront"
-                                    onClick={() => handleQuickSingleToggle(variant.id, 'enableOffer', !!variant.enableOffer)}
-                                >
-                                    <Badge tone={variant.enableOffer ? 'magic' : undefined}>
-                                        {variant.enableOffer ? 'Offer ON' : 'Offer OFF'}
-                                    </Badge>
-                                </div>
-                            </InlineStack>
+                                <InlineStack gap="100" blockAlign="center" wrap={false}>
+                                    <div 
+                                        style={{ cursor: 'pointer' }}
+                                        title="Click to toggle Price Breakdown on storefront"
+                                        onClick={() => handleQuickSingleToggle(variant.id, 'enableBreakdown', variant.enableBreakdown !== false)}
+                                    >
+                                        <Badge tone={variant.enableBreakdown !== false ? 'success' : undefined} size="small">
+                                            {variant.enableBreakdown !== false ? 'Breakdown ON' : 'Breakdown OFF'}
+                                        </Badge>
+                                    </div>
+                                    <div 
+                                        style={{ cursor: 'pointer' }}
+                                        title="Click to toggle Make An Offer on storefront"
+                                        onClick={() => handleQuickSingleToggle(variant.id, 'enableOffer', !!variant.enableOffer)}
+                                    >
+                                        <Badge tone={variant.enableOffer ? 'magic' : undefined} size="small">
+                                            {variant.enableOffer ? 'Offer ON' : 'Offer OFF'}
+                                        </Badge>
+                                    </div>
+                                </InlineStack>
+                            </BlockStack>
                         </div>,
-                        <Text as="span" variant="bodyMd" tone="subdued">{variant.sku}</Text>,
-                        <Text as="span" variant="bodyMd">{variant.variantTitle || 'Default Title'}</Text>,
+                        <div style={{ cursor: 'pointer' }} onClick={() => handleEditProduct(variant)} title="Click to edit">
+                            <Text as="span" variant="bodyMd" tone="subdued">{variant.sku || '-'}</Text>
+                        </div>,
+                        <div style={{ cursor: 'pointer', color: '#2c6ecb' }} onClick={() => handleEditProduct(variant)} title="Click to edit">
+                            <Text as="span" variant="bodyMd" fontWeight="semibold">{variant.variantTitle || 'Default Title'}</Text>
+                        </div>,
                         variant.metal || '-',
                         variant.karat ? `${variant.karat}K` : '-',
                         variant.weightGrams ? `${variant.weightGrams}g` : '-',
                         variant.gemstoneType || (variant.gemstones && variant.gemstones.length > 0 ? variant.gemstones[0].gemstoneType : '-'),
                         formatCurrency(variant.currentPrice || 0),
-                        <InlineStack gap="200">
+                        <div style={{ minWidth: '110px', display: 'flex', gap: '4px' }}>
                             <Button
+                                size="slim"
                                 icon={UploadIcon}
                                 onClick={() => handlePushSingleProduct(variant.id, variant.sku)}
                                 accessibilityLabel="Push to Shopify"
                             />
-                            <Button icon={EditIcon} onClick={() => handleEditProduct(variant)} />
-                            <Button tone="critical" icon={DeleteIcon} onClick={() => handleDeleteProduct(variant.id)} />
-                        </InlineStack>,
+                            <Button size="slim" icon={EditIcon} onClick={() => handleEditProduct(variant)} accessibilityLabel="Edit Product" />
+                            <Button size="slim" tone="critical" icon={DeleteIcon} onClick={() => handleDeleteProduct(variant.id)} accessibilityLabel="Delete Product" />
+                        </div>,
                     ]);
                 });
             }
