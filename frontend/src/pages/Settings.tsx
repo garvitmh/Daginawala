@@ -246,15 +246,7 @@ export default function Settings() {
                                 />
                             </BlockStack>
 
-                            <TextField
-                                label="Wastage (%)"
-                                type="number"
-                                value={String(settings.defaultWastagePct)}
-                                onChange={(value) =>
-                                    setSettings({ ...settings, defaultWastagePct: parseFloat(value) || 0 })
-                                }
-                                autoComplete="off"
-                            />
+
 
                             <TextField
                                 label="GST (%)"

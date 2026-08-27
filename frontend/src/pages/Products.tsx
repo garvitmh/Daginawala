@@ -1946,7 +1946,7 @@ export default function Products() {
 
                         <Card>
                             <BlockStack gap="400">
-                                <Text as="h3" variant="headingMd">Labour & Wastage Configuration</Text>
+                                <Text as="h3" variant="headingMd">Labour & Making Charge Configuration</Text>
 
                                 <Select
                                     label="Assigned Making Group (Master)"
@@ -2005,29 +2005,7 @@ export default function Products() {
                                     )}
                                 </BlockStack>
 
-                                <BlockStack gap="400">
-                                    <Text as="h4" variant="headingSm">Wastage</Text>
-                                    <Select
-                                        label="Wastage From"
-                                        options={[
-                                            { label: 'Shop Default', value: '' },
-                                            { label: 'Per Gram (Weight)', value: 'per_gram' },
-                                            { label: 'Percentage (%)', value: 'percent' },
-                                        ]}
-                                        value={editWastageType}
-                                        onChange={setEditWastageType}
-                                    />
-                                    {(editWastageType === 'per_gram' || editWastageType === 'percent') && (
-                                        <TextField
-                                            label={editWastageType === 'per_gram' ? "Wastage Weight (grams)" : "Wastage Percentage (%)"}
-                                            type="number"
-                                            value={editWastageValue}
-                                            onChange={setEditWastageValue}
-                                            autoComplete="off"
-                                            suffix={editWastageType === 'percent' ? '%' : 'g'}
-                                        />
-                                    )}
-                                </BlockStack>
+
                             </BlockStack>
                         </Card>
 
@@ -2246,14 +2224,7 @@ export default function Products() {
                                                                 ₹{(priceBreakdown.metal_value / 100).toFixed(2)}
                                                             </td>
                                                         </tr>
-                                                        <tr style={{ borderBottom: '1px solid #f1f2f3' }}>
-                                                            <td style={{ padding: '8px 16px' }}>
-                                                                Wastage <span style={{ color: '#6d7175', fontSize: '12px' }}>({priceBreakdown.wastage_pct}%)</span>
-                                                            </td>
-                                                            <td style={{ padding: '8px 16px', textAlign: 'right' }}>
-                                                                ₹{(priceBreakdown.wastage_amount / 100).toFixed(2)}
-                                                            </td>
-                                                        </tr>
+
                                                         <tr style={{ borderBottom: '1px solid #f1f2f3' }}>
                                                             <td style={{ padding: '8px 16px' }}>
                                                                 Making Charges
@@ -2836,30 +2807,15 @@ export default function Products() {
                                         />
                                     </div>
                                 </InlineStack>
-                                <InlineStack gap="400">
-                                    <div style={{ flex: 1 }}>
-                                        <TextField
-                                            label="Wastage %"
-                                            type="number"
-                                            value={bulkWastagePct}
-                                            onChange={setBulkWastagePct}
-                                            placeholder="e.g. 0"
-                                            suffix="%"
-                                            autoComplete="off"
-                                        />
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <TextField
-                                            label="GST %"
-                                            type="number"
-                                            value={bulkGstPct}
-                                            onChange={setBulkGstPct}
-                                            placeholder="e.g. 3"
-                                            suffix="%"
-                                            autoComplete="off"
-                                        />
-                                    </div>
-                                </InlineStack>
+                                <TextField
+                                    label="GST %"
+                                    type="number"
+                                    value={bulkGstPct}
+                                    onChange={setBulkGstPct}
+                                    placeholder="e.g. 3"
+                                    suffix="%"
+                                    autoComplete="off"
+                                />
                             </BlockStack>
                         </Card>
 
