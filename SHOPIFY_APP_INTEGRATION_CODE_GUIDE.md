@@ -1,38 +1,36 @@
 # Dagina Cloud — Complete Shopify Theme Integration & Code Guide
 
-> **Yes, this document contains the exact 100% complete code.** You can select all and replace the entire content of `snippets/gemini-price-breakdown-enhanced.liquid` in your Shopify Theme Code Editor.
+> **Yes, this document contains the exact 100% complete replacement code.** You can select all and replace the entire content of `snippets/gemini-price-breakdown-enhanced.liquid` in your Shopify Theme Code Editor.
 
 ---
 
-## 📋 Overview of What is Included in this File
+## 📋 Overview of Changes & Features
 
-1. **Transparent Price Breakdown**:
-   - Live Gold Purity, Metal Color, Gold Value (calculated at live market rates).
-   - Making Charges and Gemstone / Moissanite cost breakdown.
-   - 3% GST computation and final price.
-   - **Wastage row is completely removed** as requested.
-   - Controlled dynamically per-product via Dagina Cloud toggle (`product.metafields.custom.enable_breakdown`).
+1. **Clean & Professional Typography (No Emojis)**:
+   - All emojis have been removed from table rows, modal headers, button text, and WhatsApp messages to ensure text never overflows or wraps awkwardly.
+   - Clean, standard jewelry terminology used throughout (*Gold Price*, *Gold Purity*, *Metal Color*, *Making Charges*, *Gemstone*, *GST*, *Final Price*).
 
-2. **Interactive "Make An Offer" Negotiation Modal**:
-   - Selectable making charge bubbles (`₹1500/g`, `₹1350/g`, `₹1200/g`, `₹1050/g`).
-   - Stone discount options (`0%`, `2%`, `5%`, `7%`, `10%`, `Custom`).
-   - Real-time instant itemized calculation inside the modal.
-   - Complete input validations for Name, 10-digit Phone, 6-digit Pincode, and City.
-   - Submits directly to backend API (`https://dagina.cloud/api/public/offers`) to generate a unique Offer ID.
-   - Automatic WhatsApp negotiation redirection with pre-formatted quote details (omitting wastage).
-   - Controlled dynamically per-product via Dagina Cloud toggle (`product.metafields.custom.enable_offer`).
+2. **Full Toggles for Price Breakdown & Making Offers**:
+   - **Price Breakdown**: Controlled per-product via Dagina Cloud toggle (`product.metafields.custom.enable_breakdown`).
+   - **Make An Offer**: Controlled per-product via Dagina Cloud toggle (`product.metafields.custom.enable_offer`).
+   - **Making Charges Negotiation**: Conditionally displayed only when making charge bubbles exist (`product.metafields.custom.enable_making_offer != false`).
+   - **Stone Value Discount**: Conditionally displayed only when gemstones/diamonds exist (`product.metafields.custom.enable_stone_offer != false`).
+   - **Wastage Display**: Completely removed from all customer-facing tables and quotes.
+
+3. **Full Compatibility with Dagina Cloud**:
+   - Seamlessly links to Dagina Cloud's backend Offer System (`/api/public/offers` and `/api/public/offers/calculate`).
+   - Creates draft orders with taxes included to prevent double GST calculation at checkout.
+   - Generates unique Offer IDs with instant WhatsApp consultant quote routing.
 
 ---
 
-## 🛠️ Step 1: Create / Replace Snippet in Shopify
+## 🛠️ Step 1: Replace Snippet in Shopify Theme
 
-1. In **Shopify Admin**, navigate to **Online Store** → **Themes**.
-2. Click the **`...`** (Actions menu) next to your live theme → **Edit code**.
-3. Under the **Snippets** folder in the left sidebar:
-   * If `gemini-price-breakdown-enhanced.liquid` exists, open it.
-   * If it does not exist, click **Add a new snippet**, name it `gemini-price-breakdown-enhanced.liquid`, and create it.
-4. **Delete everything in that file and paste the complete code block below.**
-5. Click **Save** in the top right corner.
+1. In **Shopify Admin**, go to **Online Store** → **Themes**.
+2. Click **`...`** (Actions) next to your live theme → **Edit code**.
+3. Under **Snippets**, open `gemini-price-breakdown-enhanced.liquid` *(or create it if not present)*.
+4. **Select all existing code, delete it, and paste the complete code block below.**
+5. Click **Save**.
 
 ---
 
@@ -54,7 +52,7 @@
 {% assign current_variant = variant | default: product.selected_or_first_available_variant %}
 {% assign breakdown = current_variant.metafields.gemini.price_breakdown.value | default: current_variant.metafields.gemini.price_breakdown %}
 
-{% comment %} WhatsApp Consultant Number (with country code, no +) {% endcomment %}
+{% comment %} WhatsApp Consultant Number (with country code, no spaces or +) {% endcomment %}
 {% assign admin_whatsapp_number = "919588977645" %}
 
 {% if breakdown %}
@@ -78,7 +76,7 @@
           
           <!-- Button Trigger -->
           <button type="button" id="offerTriggerBtn" onclick="window.showOfferForm()" style="width: 100%; padding: 14px; background-color: #111827; color: #ffffff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px; letter-spacing: 0.1em; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background-color 0.2s;">
-            🤝 Make an Offer
+            Make an Offer
           </button>
 
         <!-- Modal Backdrop Overlay (hidden by default) -->
@@ -109,21 +107,21 @@
                 <!-- Detailed Breakdown inside Modal (Dynamic) -->
                 <div id="modalOfferDetailBreakdown" style="border-top: 1px dashed #cbd5e1; padding-top: 10px; font-size: 13px; color: #475569; display: flex; flex-direction: column; gap: 6px;">
                   <div style="display: flex; justify-content: space-between;">
-                    <span>🪙 Gold Price (Fixed):</span>
+                    <span>Gold Price (Fixed):</span>
                     <span id="modalGoldVal">{{ breakdown.metal_value | money }}</span>
                   </div>
                   <div style="display: flex; justify-content: space-between;">
-                    <span>🛠️ Making Charges:</span>
+                    <span>Making Charges:</span>
                     <span id="modalMakingVal">{{ breakdown.making_charges | money }}</span>
                   </div>
                   {% if has_stones %}
                   <div style="display: flex; justify-content: space-between;">
-                    <span>💎 Gemstones:</span>
+                    <span>Gemstones:</span>
                     <span id="modalGemstoneVal">{{ breakdown.gemstone_price | money }}</span>
                   </div>
                   {% endif %}
                   <div style="display: flex; justify-content: space-between;">
-                    <span>🧾 GST ({{ breakdown.gst_pct }}%):</span>
+                    <span>GST ({{ breakdown.gst_pct }}%):</span>
                     <span id="modalGstVal">{% assign gst_val = breakdown.gst_amount | default: breakdown.gst | default: 0 %}{{ gst_val | money }}</span>
                   </div>
                 </div>
@@ -134,6 +132,7 @@
                 <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;">
                   
                   <!-- Making Charges Input (Bubbles) -->
+                  {% if breakdown.making_charge_bubbles.size > 0 and product.metafields.custom.enable_making_offer.value != false %}
                   <div>
                     <label style="display: block; font-size: 12px; font-weight: bold; color: #374151; margin-bottom: 8px;">
                       Making Charges Offer <span style="font-weight: normal; color: #6b7280;">(Current: ₹{{ breakdown.making_charge_rate }}/g)</span>
@@ -147,9 +146,10 @@
                     </div>
                     <input type="hidden" id="offerMakingInput" value="{{ breakdown.making_charge_bubbles[0] }}">
                   </div>
+                  {% endif %}
                   
                   <!-- Stone Discount Input (Dropdown) -->
-                  {% if has_stones %}
+                  {% if has_stones and product.metafields.custom.enable_stone_offer.value != false %}
                   <div>
                     <label style="display: block; font-size: 12px; font-weight: bold; color: #374151; margin-bottom: 8px;">
                       Stone Value Discount
@@ -176,7 +176,7 @@
                   </h4>
                   
                   <div style="margin-bottom: 12px;">
-                    <label for="negName" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">Your Full Name *</label>
+                    <label for="negName" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">Your Name *</label>
                     <input type="text" id="negName" required placeholder="e.g. Rahul Sharma" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;">
                     <div class="field-error" id="error_negName" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid Name (letters and spaces only, min 2 chars).</div>
                   </div>
@@ -288,7 +288,7 @@
               <!-- 2. Metal Value -->
               <tr style="border-bottom: 1px solid #f1f2f3;">
                 <td style="padding: 10px 16px; color: #374151; display: flex; align-items: center; gap: 8px;">
-                  <span>🪙 {{ breakdown.metal_name | default: 'Metal' }} Price</span>
+                  <span>{{ breakdown.metal_name | default: 'Metal' }} Price</span>
                   <span class="badge badge-fixed" style="font-size: 10px; font-weight: bold; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">Fixed</span>
                 </td>
                 <td style="padding: 10px 16px; text-align: right; font-weight: 500;">
@@ -302,7 +302,7 @@
                   <tr style="border-bottom: 1px solid #f1f2f3;">
                     <td style="padding: 10px 16px; color: #374151; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
                       <span>
-                        💎 {{ gem.type }}
+                        {{ gem.type }}
                         {% if gem.clarity %}({{ gem.clarity }}){% endif %}
                         {% if gem.color %}{{ gem.color }}{% endif %}
                       </span>
@@ -316,7 +316,7 @@
               {% elsif breakdown.gemstone_price > 0 %}
                 <tr style="border-bottom: 1px solid #f1f2f3;">
                   <td style="padding: 10px 16px; color: #374151; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
-                    <span>💎 {{ breakdown.gemstone_name | default: 'Gemstone' }}</span>
+                    <span>{{ breakdown.gemstone_name | default: 'Gemstone' }}</span>
                     <span class="badge badge-negotiable" style="font-size: 10px; font-weight: bold; background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">Negotiable</span>
                   </td>
                   <td style="padding: 10px 16px; text-align: right; font-weight: 500;">
@@ -329,7 +329,7 @@
               <tr style="border-bottom: 1px solid #f1f2f3;">
                 <td style="padding: 10px 16px; color: #374151; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
                   <div style="display: flex; flex-direction: column;">
-                    <span>🛠️ Making Charges</span>
+                    <span>Making Charges</span>
                     <span style="font-size: 11px; color: #6b7280; font-weight: normal; margin-top: 2px;">
                       {% if breakdown.making_charge_type == 'percent' %}
                         {{ breakdown.making_charge_rate }}% of value
@@ -358,7 +358,7 @@
               <!-- 6. GST (3%) -->
               <tr style="border-bottom: 1px solid #f1f2f3;">
                 <td style="padding: 10px 16px; color: #374151; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
-                  <span>🏛️ GST ({{ breakdown.gst_pct }}%)</span>
+                  <span>GST ({{ breakdown.gst_pct }}%)</span>
                   <span class="badge badge-fixed" style="font-size: 10px; font-weight: bold; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">Fixed</span>
                 </td>
                 <td style="padding: 10px 16px; text-align: right; font-weight: 500;">
@@ -686,20 +686,20 @@
                   const totalVal = (b.total / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
 
                   waText += `--- PRICING BREAKDOWN ---\n` +
-                    `🪙 Metal: ${b.metal_name || 'Gold'} (Gross: ${b.gross_weight || 0}g, Net: ${b.net_weight || 0}g)\n` +
-                    `🪙 Metal Price: ₹${metalVal} (@ ₹${metalRate}/g)\n` +
-                    `🛠️ Making Charges: ₹${makingVal} (@ ${makingRateVal})\n` +
-                    `💎 Gemstones: ₹${gemstoneVal}\n`;
+                    `Metal: ${b.metal_name || 'Gold'} (Gross: ${b.gross_weight || 0}g, Net: ${b.net_weight || 0}g)\n` +
+                    `Metal Price: ₹${metalVal} (@ ₹${metalRate}/g)\n` +
+                    `Making Charges: ₹${makingVal} (@ ${makingRateVal})\n` +
+                    `Gemstones: ₹${gemstoneVal}\n`;
 
                   if (b.gemstone_details && b.gemstone_details.gemstones && b.gemstone_details.gemstones.length > 0) {
                     b.gemstone_details.gemstones.forEach(gem => {
                       const gemCost = (gem.finalCost / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-                      waText += `  └ ${gem.type} (${gem.gemstonePieces || 0} pcs, ${gem.gemstoneWeight || 0} ct): ₹${gemCost}\n`;
+                      waText += `  - ${gem.type} (${gem.gemstonePieces || 0} pcs, ${gem.gemstoneWeight || 0} ct): ₹${gemCost}\n`;
                     });
                   }
 
-                  waText += `🧾 GST (${b.gst_pct}%): ₹${gstVal}\n\n` +
-                    `💰 Estimated Total: ₹${totalVal}\n\n`;
+                  waText += `GST (${b.gst_pct}%): ₹${gstVal}\n\n` +
+                    `Estimated Total: ₹${totalVal}\n\n`;
                 } else {
                   waText += `Current Price: ₹${BASE_PRICE.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n` +
                     `My Offer:\n` +

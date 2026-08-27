@@ -72,19 +72,21 @@
                 <!-- Detailed Breakdown inside Modal (Dynamic) -->
                 <div id="modalOfferDetailBreakdown" style="border-top: 1px dashed #cbd5e1; padding-top: 10px; font-size: 13px; color: #475569; display: flex; flex-direction: column; gap: 6px;">
                   <div style="display: flex; justify-content: space-between;">
-                    <span>🪙 Gold Price (Fixed):</span>
+                    <span>Gold Price (Fixed):</span>
                     <span id="modalGoldVal">{{ breakdown.metal_value | money }}</span>
                   </div>
                   <div style="display: flex; justify-content: space-between;">
-                    <span>🛠️ Making Charges:</span>
+                    <span>Making Charges:</span>
                     <span id="modalMakingVal">{{ breakdown.making_charges | money }}</span>
                   </div>
+                  {% if has_stones %}
                   <div style="display: flex; justify-content: space-between;">
-                    <span>💎 Gemstones:</span>
+                    <span>Gemstones:</span>
                     <span id="modalGemstoneVal">{{ breakdown.gemstone_price | money }}</span>
                   </div>
+                  {% endif %}
                   <div style="display: flex; justify-content: space-between;">
-                    <span>🧾 GST ({{ breakdown.gst_pct }}%):</span>
+                    <span>GST ({{ breakdown.gst_pct }}%):</span>
                     <span id="modalGstVal">{% assign gst_val = breakdown.gst_amount | default: breakdown.gst | default: 0 %}{{ gst_val | money }}</span>
                   </div>
                 </div>
@@ -95,9 +97,10 @@
                 <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;">
                   
                   <!-- Making Charges Input (Bubbles) -->
+                  {% if breakdown.making_charge_bubbles.size > 0 and product.metafields.custom.enable_making_offer.value != false %}
                   <div>
                     <label style="display: block; font-size: 12px; font-weight: bold; color: #374151; margin-bottom: 8px;">
-                      Making Charges Offer <span style="font-weight: normal; color: #6b7280;">(Current: {{ breakdown.making_charge_rate }}/g)</span>
+                      Making Charges Offer <span style="font-weight: normal; color: #6b7280;">(Current: ₹{{ breakdown.making_charge_rate }}/g)</span>
                     </label>
                     <div class="making-bubbles-container" style="display: flex; gap: 8px; flex-wrap: wrap;">
                       {% for bubble in breakdown.making_charge_bubbles %}
@@ -108,9 +111,10 @@
                     </div>
                     <input type="hidden" id="offerMakingInput" value="{{ breakdown.making_charge_bubbles[0] }}">
                   </div>
+                  {% endif %}
                   
                   <!-- Stone Discount Input (Dropdown) -->
-                  {% if has_stones %}
+                  {% if has_stones and product.metafields.custom.enable_stone_offer.value != false %}
                   <div>
                     <label style="display: block; font-size: 12px; font-weight: bold; color: #374151; margin-bottom: 8px;">
                       Stone Value Discount
@@ -691,21 +695,21 @@
                   const totalVal = (b.total / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
 
                   waText += `--- PRICING BREAKDOWN ---\n` +
-                    `🪙 Metal: ${b.metal_name || 'Gold'} (Gross: ${b.gross_weight || 0}g, Net: ${b.net_weight || 0}g)\n` +
-                    `🪙 Metal Price: ₹${metalVal} (@ ₹${metalRate}/g)\n` +
-                    `🛠️ Making Charges: ₹${makingVal} (@ ${makingRateVal})\n` +
-                    `💎 Gemstones: ₹${gemstoneVal}\n`;
+                    `Metal: ${b.metal_name || 'Gold'} (Gross: ${b.gross_weight || 0}g, Net: ${b.net_weight || 0}g)\n` +
+                    `Metal Price: ₹${metalVal} (@ ₹${metalRate}/g)\n` +
+                    `Making Charges: ₹${makingVal} (@ ${makingRateVal})\n` +
+                    `Gemstones: ₹${gemstoneVal}\n`;
 
                   // Add gemstone details if present
                   if (b.gemstone_details && b.gemstone_details.gemstones && b.gemstone_details.gemstones.length > 0) {
                     b.gemstone_details.gemstones.forEach(gem => {
                       const gemCost = (gem.finalCost / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-                      waText += `  └ ${gem.type} (${gem.gemstonePieces || 0} pcs, ${gem.gemstoneWeight || 0} ct): ₹${gemCost}\n`;
+                      waText += `  - ${gem.type} (${gem.gemstonePieces || 0} pcs, ${gem.gemstoneWeight || 0} ct): ₹${gemCost}\n`;
                     });
                   }
 
-                  waText += `🧾 GST (${b.gst_pct}%): ₹${gstVal}\n\n` +
-                    `💰 Estimated Total: ₹${totalVal}\n\n`;
+                  waText += `GST (${b.gst_pct}%): ₹${gstVal}\n\n` +
+                    `Estimated Total: ₹${totalVal}\n\n`;
                 } else {
                   waText += `Current Price: ₹${BASE_PRICE.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n` +
                     `My Offer:\n` +
