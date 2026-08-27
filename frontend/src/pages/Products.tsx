@@ -321,6 +321,203 @@ export default function Products() {
         }
     };
 
+    // Bulk Edit State
+    const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+    const [bulkSaving, setBulkSaving] = useState(false);
+    const [bulkEnableBreakdown, setBulkEnableBreakdown] = useState('keep');
+    const [bulkEnableOffer, setBulkEnableOffer] = useState('keep');
+    const [bulkMinOfferAmount, setBulkMinOfferAmount] = useState('');
+    const [bulkMakingGroupId, setBulkMakingGroupId] = useState('keep');
+    const [bulkMakingChargeType, setBulkMakingChargeType] = useState('keep');
+    const [bulkMakingChargeValue, setBulkMakingChargeValue] = useState('');
+    const [bulkWastagePct, setBulkWastagePct] = useState('');
+    const [bulkGstPct, setBulkGstPct] = useState('');
+    const [bulkMetalDiscountType, setBulkMetalDiscountType] = useState('keep');
+    const [bulkMetalDiscountValue, setBulkMetalDiscountValue] = useState('');
+    const [bulkMakingDiscountType, setBulkMakingDiscountType] = useState('keep');
+    const [bulkMakingDiscountValue, setBulkMakingDiscountValue] = useState('');
+    const [bulkGemstoneDiscountType, setBulkGemstoneDiscountType] = useState('keep');
+    const [bulkGemstoneDiscountValue, setBulkGemstoneDiscountValue] = useState('');
+    const [bulkDiamondCertified, setBulkDiamondCertified] = useState('keep');
+    const [bulkDiamondLab, setBulkDiamondLab] = useState('keep');
+    const [bulkSyncToShopify, setBulkSyncToShopify] = useState(true);
+
+    const handleOpenBulkEditModal = () => {
+        if (selectedProducts.length === 0) {
+            setError('Please select at least one product to bulk edit');
+            setTimeout(() => setError(''), 3000);
+            return;
+        }
+        setBulkEnableBreakdown('keep');
+        setBulkEnableOffer('keep');
+        setBulkMinOfferAmount('');
+        setBulkMakingGroupId('keep');
+        setBulkMakingChargeType('keep');
+        setBulkMakingChargeValue('');
+        setBulkWastagePct('');
+        setBulkGstPct('');
+        setBulkMetalDiscountType('keep');
+        setBulkMetalDiscountValue('');
+        setBulkMakingDiscountType('keep');
+        setBulkMakingDiscountValue('');
+        setBulkGemstoneDiscountType('keep');
+        setBulkGemstoneDiscountValue('');
+        setBulkDiamondCertified('keep');
+        setBulkDiamondLab('keep');
+        setBulkSyncToShopify(true);
+        setShowBulkEditModal(true);
+    };
+
+    const handleApplyBulkEdit = async () => {
+        if (selectedProducts.length === 0) return;
+        setBulkSaving(true);
+        setError('');
+        setSuccessMessage('');
+
+        const updates: any = {};
+
+        if (bulkEnableBreakdown === 'enable') updates.enableBreakdown = true;
+        if (bulkEnableBreakdown === 'disable') updates.enableBreakdown = false;
+
+        if (bulkEnableOffer === 'enable') updates.enableOffer = true;
+        if (bulkEnableOffer === 'disable') updates.enableOffer = false;
+
+        if (bulkMinOfferAmount !== '') updates.minOfferAmount = parseFloat(bulkMinOfferAmount);
+
+        if (bulkMakingGroupId !== 'keep') {
+            updates.makingGroupId = bulkMakingGroupId === 'none' ? null : bulkMakingGroupId;
+        }
+
+        if (bulkMakingChargeType !== 'keep') {
+            updates.makingChargeType = bulkMakingChargeType;
+            if (bulkMakingChargeValue !== '') {
+                updates.makingChargeValue = parseFloat(bulkMakingChargeValue);
+            }
+        }
+
+        if (bulkWastagePct !== '') updates.wastagePct = parseFloat(bulkWastagePct);
+        if (bulkGstPct !== '') updates.gstPct = parseFloat(bulkGstPct);
+
+        if (bulkMetalDiscountType !== 'keep') {
+            updates.metalDiscountType = bulkMetalDiscountType;
+            if (bulkMetalDiscountValue !== '') {
+                updates.metalDiscountValue = parseFloat(bulkMetalDiscountValue);
+            }
+        }
+
+        if (bulkMakingDiscountType !== 'keep') {
+            updates.makingDiscountType = bulkMakingDiscountType;
+            if (bulkMakingDiscountValue !== '') {
+                updates.makingDiscountValue = parseFloat(bulkMakingDiscountValue);
+            }
+        }
+
+        if (bulkGemstoneDiscountType !== 'keep') {
+            updates.gemstoneDiscountType = bulkGemstoneDiscountType;
+            if (bulkGemstoneDiscountValue !== '') {
+                updates.gemstoneDiscountValue = parseFloat(bulkGemstoneDiscountValue);
+            }
+        }
+
+        if (bulkDiamondCertified !== 'keep') {
+            updates.diamondCertified = bulkDiamondCertified === 'yes';
+        }
+
+        if (bulkDiamondLab !== 'keep') {
+            updates.diamondLab = bulkDiamondLab;
+        }
+
+        if (Object.keys(updates).length === 0) {
+            setError('Please configure at least one setting to update');
+            setBulkSaving(false);
+            return;
+        }
+
+        try {
+            const response = await api.post('/products/bulk-edit', {
+                productIds: selectedProducts,
+                updates,
+                syncToShopify: bulkSyncToShopify
+            });
+
+            if (response.data.success) {
+                setSuccessMessage(`✓ Updated ${response.data.updatedCount} products in database${bulkSyncToShopify ? ` and synced ${response.data.syncedCount || 0} to Shopify` : ''}!`);
+                setShowBulkEditModal(false);
+                setSelectedProducts([]);
+                await fetchProducts();
+                setTimeout(() => setSuccessMessage(''), 5000);
+            } else {
+                setError(response.data.error || 'Failed to apply bulk edit');
+            }
+        } catch (err: any) {
+            console.error('Error applying bulk edit:', err);
+            const msg = err.response?.data?.error || err.message || 'Unknown error';
+            setError(`Bulk edit failed: ${msg}`);
+        } finally {
+            setBulkSaving(false);
+        }
+    };
+
+    const handleQuickBulkToggle = async (field: 'enableBreakdown' | 'enableOffer', value: boolean) => {
+        if (selectedProducts.length === 0) {
+            setError('Please select at least one product');
+            setTimeout(() => setError(''), 3000);
+            return;
+        }
+
+        setBulkSaving(true);
+        setError('');
+        setSuccessMessage('');
+
+        try {
+            const response = await api.post('/products/bulk-edit', {
+                productIds: selectedProducts,
+                updates: { [field]: value },
+                syncToShopify: true
+            });
+
+            if (response.data.success) {
+                const label = field === 'enableBreakdown' ? 'Price Breakdown' : 'Make an Offer';
+                const status = value ? 'ENABLED' : 'DISABLED';
+                setSuccessMessage(`✓ ${label} ${status} for ${response.data.updatedCount} products and synced to Shopify!`);
+                setSelectedProducts([]);
+                await fetchProducts();
+                setTimeout(() => setSuccessMessage(''), 5000);
+            } else {
+                setError(response.data.error || 'Failed to update products');
+            }
+        } catch (err: any) {
+            console.error('Quick bulk toggle error:', err);
+            const msg = err.response?.data?.error || err.message || 'Unknown error';
+            setError(`Update failed: ${msg}`);
+        } finally {
+            setBulkSaving(false);
+        }
+    };
+
+    const handleQuickSingleToggle = async (productId: string, field: 'enableBreakdown' | 'enableOffer', currentValue: boolean) => {
+        const newValue = !currentValue;
+        try {
+            const response = await api.post('/products/bulk-edit', {
+                productIds: [productId],
+                updates: { [field]: newValue },
+                syncToShopify: true
+            });
+
+            if (response.data.success) {
+                const label = field === 'enableBreakdown' ? 'Price Breakdown' : 'Make an Offer';
+                const status = newValue ? 'ENABLED' : 'DISABLED';
+                setSuccessMessage(`✓ ${label} ${status} and synced to Shopify!`);
+                await fetchProducts();
+                setTimeout(() => setSuccessMessage(''), 3000);
+            }
+        } catch (err: any) {
+            console.error('Single toggle error:', err);
+            const msg = err.response?.data?.error || err.message || 'Unknown error';
+            setError(`Update failed: ${msg}`);
+        }
+    };
+
     // Handler for pushing single product to Shopify
     const handlePushSingleProduct = async (productId: string, sku: string) => {
         setError('');
@@ -1229,9 +1426,29 @@ export default function Products() {
                         '',
                         '',
                         <div key={variant.id}>
-                            <Badge tone={variant.status === 'active' ? 'success' : 'attention'}>
-                                {variant.status?.toUpperCase()}
-                            </Badge>
+                            <InlineStack gap="100">
+                                <Badge tone={variant.status === 'active' ? 'success' : 'attention'}>
+                                    {variant.status?.toUpperCase()}
+                                </Badge>
+                                <div 
+                                    style={{ cursor: 'pointer' }}
+                                    title="Click to toggle Price Breakdown on storefront"
+                                    onClick={() => handleQuickSingleToggle(variant.id, 'enableBreakdown', variant.enableBreakdown !== false)}
+                                >
+                                    <Badge tone={variant.enableBreakdown !== false ? 'success' : undefined}>
+                                        {variant.enableBreakdown !== false ? 'Breakdown ON' : 'Breakdown OFF'}
+                                    </Badge>
+                                </div>
+                                <div 
+                                    style={{ cursor: 'pointer' }}
+                                    title="Click to toggle Make An Offer on storefront"
+                                    onClick={() => handleQuickSingleToggle(variant.id, 'enableOffer', !!variant.enableOffer)}
+                                >
+                                    <Badge tone={variant.enableOffer ? 'magic' : undefined}>
+                                        {variant.enableOffer ? 'Offer ON' : 'Offer OFF'}
+                                    </Badge>
+                                </div>
+                            </InlineStack>
                         </div>,
                         <Text as="span" variant="bodyMd" tone="subdued">{variant.sku}</Text>,
                         <Text as="span" variant="bodyMd">{variant.variantTitle || 'Default Title'}</Text>,
@@ -1421,32 +1638,53 @@ export default function Products() {
                             ) : (
                                 <>
                                     {/* FIX BUG-05: Select All / Deselect All bar */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 16px', borderBottom: '1px solid #dfe3e8', background: selectedProducts.length > 0 ? '#f1f8ff' : 'transparent' }}>
-                                        <Checkbox
-                                            label=""
-                                            checked={products.length > 0 && products.every(p => selectedProducts.includes(p.id))}
-                                            onChange={(checked) => {
-                                                if (checked) {
-                                                    const allIds = products.map(p => p.id);
-                                                    setSelectedProducts(prev => {
-                                                        const newSet = new Set([...prev, ...allIds]);
-                                                        return Array.from(newSet);
-                                                    });
-                                                } else {
-                                                    const currentPageIds = products.map(p => p.id);
-                                                    setSelectedProducts(prev => prev.filter(id => !currentPageIds.includes(id)));
-                                                }
-                                            }}
-                                        />
-                                        <Text as="span" variant="bodySm" tone="subdued">
-                                            {selectedProducts.length > 0
-                                                ? `${selectedProducts.length} selected`
-                                                : 'Select all on this page'}
-                                        </Text>
+                                    {/* Select All & Dynamic Bulk Action Bar */}
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', padding: '10px 16px', borderBottom: '1px solid #dfe3e8', background: selectedProducts.length > 0 ? '#f0f7ff' : 'transparent', borderRadius: '4px' }}>
+                                        <InlineStack gap="300" blockAlign="center">
+                                            <Checkbox
+                                                label=""
+                                                checked={products.length > 0 && products.every(p => selectedProducts.includes(p.id))}
+                                                onChange={(checked) => {
+                                                    if (checked) {
+                                                        const allIds = products.map(p => p.id);
+                                                        setSelectedProducts(prev => Array.from(new Set([...prev, ...allIds])));
+                                                    } else {
+                                                        const currentPageIds = products.map(p => p.id);
+                                                        setSelectedProducts(prev => prev.filter(id => !currentPageIds.includes(id)));
+                                                    }
+                                                }}
+                                            />
+                                            <Text as="span" variant="bodyMd" fontWeight={selectedProducts.length > 0 ? 'semibold' : 'regular'} tone={selectedProducts.length > 0 ? undefined : 'subdued'}>
+                                                {selectedProducts.length > 0 ? `${selectedProducts.length} product(s) selected` : 'Select all on this page'}
+                                            </Text>
+                                            {selectedProducts.length > 0 && (
+                                                <Button size="slim" onClick={() => setSelectedProducts([])}>
+                                                    Deselect All
+                                                </Button>
+                                            )}
+                                        </InlineStack>
+
                                         {selectedProducts.length > 0 && (
-                                            <Button size="slim" onClick={() => setSelectedProducts([])}>
-                                                Deselect All
-                                            </Button>
+                                            <InlineStack gap="200" blockAlign="center">
+                                                <Button variant="primary" icon={EditIcon} onClick={handleOpenBulkEditModal} loading={bulkSaving}>
+                                                    {`Bulk Edit (${selectedProducts.length})`}
+                                                </Button>
+                                                <Button size="slim" onClick={() => handleQuickBulkToggle('enableBreakdown', true)} loading={bulkSaving}>
+                                                    Breakdown ON
+                                                </Button>
+                                                <Button size="slim" onClick={() => handleQuickBulkToggle('enableBreakdown', false)} loading={bulkSaving}>
+                                                    Breakdown OFF
+                                                </Button>
+                                                <Button size="slim" onClick={() => handleQuickBulkToggle('enableOffer', true)} loading={bulkSaving}>
+                                                    Offer ON
+                                                </Button>
+                                                <Button size="slim" onClick={() => handleQuickBulkToggle('enableOffer', false)} loading={bulkSaving}>
+                                                    Offer OFF
+                                                </Button>
+                                                <Button size="slim" icon={UploadIcon} onClick={handlePushBreakdown} loading={pushingBreakdown}>
+                                                    Push to Shopify
+                                                </Button>
+                                            </InlineStack>
                                         )}
                                     </div>
                                     <DataTable
@@ -2485,6 +2723,276 @@ export default function Products() {
                                 autoComplete="off"
                             />
                         )}
+                    </BlockStack>
+                </Modal.Section>
+            </Modal>
+            {/* Dynamic Bulk Edit Modal */}
+            <Modal
+                open={showBulkEditModal}
+                onClose={() => setShowBulkEditModal(false)}
+                title={`Bulk Edit ${selectedProducts.length} Product${selectedProducts.length > 1 ? 's' : ''}`}
+                primaryAction={{
+                    content: `Apply & Save to ${selectedProducts.length} Products`,
+                    onAction: handleApplyBulkEdit,
+                    loading: bulkSaving,
+                }}
+                secondaryActions={[
+                    {
+                        content: 'Cancel',
+                        onAction: () => setShowBulkEditModal(false),
+                        disabled: bulkSaving,
+                    },
+                ]}
+            >
+                <Modal.Section>
+                    <BlockStack gap="400">
+                        <Banner tone="info">
+                            <p>Modify any settings below to apply them across all <strong>{selectedProducts.length} selected products</strong> in one click. Fields left as "Keep Existing" will not be changed.</p>
+                        </Banner>
+
+                        {/* 1. Storefront Visibility & Features */}
+                        <Card>
+                            <BlockStack gap="300">
+                                <Text as="h3" variant="headingSm" fontWeight="semibold">Storefront Visibility & Features</Text>
+                                <InlineStack gap="400">
+                                    <div style={{ flex: 1 }}>
+                                        <Select
+                                            label="Price Breakdown Table"
+                                            options={[
+                                                { label: '— Keep Existing —', value: 'keep' },
+                                                { label: 'Enable Breakdown on Storefront (Show Table)', value: 'enable' },
+                                                { label: 'Disable Breakdown on Storefront (Hide Table)', value: 'disable' },
+                                            ]}
+                                            value={bulkEnableBreakdown}
+                                            onChange={setBulkEnableBreakdown}
+                                            helpText="Control whether the price breakdown table is visible on product pages."
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <Select
+                                            label="Make an Offer Widget"
+                                            options={[
+                                                { label: '— Keep Existing —', value: 'keep' },
+                                                { label: 'Enable "Make an Offer" Button', value: 'enable' },
+                                                { label: 'Disable "Make an Offer" Button', value: 'disable' },
+                                            ]}
+                                            value={bulkEnableOffer}
+                                            onChange={setBulkEnableOffer}
+                                            helpText="Allow customers to submit price negotiation offers on product pages."
+                                        />
+                                    </div>
+                                </InlineStack>
+                                {bulkEnableOffer === 'enable' && (
+                                    <TextField
+                                        label="Minimum Offer Amount (optional)"
+                                        type="number"
+                                        value={bulkMinOfferAmount}
+                                        onChange={setBulkMinOfferAmount}
+                                        prefix="₹"
+                                        placeholder="Leave empty to keep existing"
+                                        autoComplete="off"
+                                    />
+                                )}
+                            </BlockStack>
+                        </Card>
+
+                        {/* 2. Making Charges & Tax Settings */}
+                        <Card>
+                            <BlockStack gap="300">
+                                <Text as="h3" variant="headingSm" fontWeight="semibold">Making Charges & Tax Settings</Text>
+                                <Select
+                                    label="Making Group"
+                                    options={[
+                                        { label: '— Keep Existing Group —', value: 'keep' },
+                                        { label: 'None (Unassign Group)', value: 'none' },
+                                        ...makingGroups.map(g => ({ label: g.name, value: g.id })),
+                                    ]}
+                                    value={bulkMakingGroupId}
+                                    onChange={setBulkMakingGroupId}
+                                />
+                                <InlineStack gap="400">
+                                    <div style={{ flex: 1 }}>
+                                        <Select
+                                            label="Making Charge Type"
+                                            options={[
+                                                { label: '— Keep Existing —', value: 'keep' },
+                                                { label: '₹ Per Gram', value: 'per_gram' },
+                                                { label: '% of Metal Value', value: 'percent' },
+                                                { label: 'Flat Fee (₹)', value: 'flat' },
+                                            ]}
+                                            value={bulkMakingChargeType}
+                                            onChange={setBulkMakingChargeType}
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <TextField
+                                            label="Making Charge Value"
+                                            type="number"
+                                            value={bulkMakingChargeValue}
+                                            onChange={setBulkMakingChargeValue}
+                                            placeholder="e.g. 1500"
+                                            disabled={bulkMakingChargeType === 'keep'}
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                </InlineStack>
+                                <InlineStack gap="400">
+                                    <div style={{ flex: 1 }}>
+                                        <TextField
+                                            label="Wastage %"
+                                            type="number"
+                                            value={bulkWastagePct}
+                                            onChange={setBulkWastagePct}
+                                            placeholder="e.g. 0"
+                                            suffix="%"
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <TextField
+                                            label="GST %"
+                                            type="number"
+                                            value={bulkGstPct}
+                                            onChange={setBulkGstPct}
+                                            placeholder="e.g. 3"
+                                            suffix="%"
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                </InlineStack>
+                            </BlockStack>
+                        </Card>
+
+                        {/* 3. Discounts */}
+                        <Card>
+                            <BlockStack gap="300">
+                                <Text as="h3" variant="headingSm" fontWeight="semibold">Discounts</Text>
+                                <InlineStack gap="400">
+                                    <div style={{ flex: 1 }}>
+                                        <Select
+                                            label="Metal Discount"
+                                            options={[
+                                                { label: '— Keep Existing —', value: 'keep' },
+                                                { label: 'None (0%)', value: 'none' },
+                                                { label: 'Percentage (%)', value: 'percent' },
+                                                { label: 'Flat (₹)', value: 'flat' },
+                                            ]}
+                                            value={bulkMetalDiscountType}
+                                            onChange={setBulkMetalDiscountType}
+                                        />
+                                    </div>
+                                    {bulkMetalDiscountType !== 'keep' && bulkMetalDiscountType !== 'none' && (
+                                        <div style={{ flex: 1 }}>
+                                            <TextField
+                                                label="Metal Discount Value"
+                                                type="number"
+                                                value={bulkMetalDiscountValue}
+                                                onChange={setBulkMetalDiscountValue}
+                                                suffix={bulkMetalDiscountType === 'percent' ? '%' : '₹'}
+                                                autoComplete="off"
+                                            />
+                                        </div>
+                                    )}
+                                </InlineStack>
+                                <InlineStack gap="400">
+                                    <div style={{ flex: 1 }}>
+                                        <Select
+                                            label="Making Discount"
+                                            options={[
+                                                { label: '— Keep Existing —', value: 'keep' },
+                                                { label: 'None (0%)', value: 'none' },
+                                                { label: 'Percentage (%)', value: 'percent' },
+                                                { label: 'Flat (₹)', value: 'flat' },
+                                            ]}
+                                            value={bulkMakingDiscountType}
+                                            onChange={setBulkMakingDiscountType}
+                                        />
+                                    </div>
+                                    {bulkMakingDiscountType !== 'keep' && bulkMakingDiscountType !== 'none' && (
+                                        <div style={{ flex: 1 }}>
+                                            <TextField
+                                                label="Making Discount Value"
+                                                type="number"
+                                                value={bulkMakingDiscountValue}
+                                                onChange={setBulkMakingDiscountValue}
+                                                suffix={bulkMakingDiscountType === 'percent' ? '%' : '₹'}
+                                                autoComplete="off"
+                                            />
+                                        </div>
+                                    )}
+                                </InlineStack>
+                                <InlineStack gap="400">
+                                    <div style={{ flex: 1 }}>
+                                        <Select
+                                            label="Gemstone Discount"
+                                            options={[
+                                                { label: '— Keep Existing —', value: 'keep' },
+                                                { label: 'None (0%)', value: 'none' },
+                                                { label: 'Percentage (%)', value: 'percent' },
+                                                { label: 'Flat (₹)', value: 'flat' },
+                                            ]}
+                                            value={bulkGemstoneDiscountType}
+                                            onChange={setBulkGemstoneDiscountType}
+                                        />
+                                    </div>
+                                    {bulkGemstoneDiscountType !== 'keep' && bulkGemstoneDiscountType !== 'none' && (
+                                        <div style={{ flex: 1 }}>
+                                            <TextField
+                                                label="Gemstone Discount Value"
+                                                type="number"
+                                                value={bulkGemstoneDiscountValue}
+                                                onChange={setBulkGemstoneDiscountValue}
+                                                suffix={bulkGemstoneDiscountType === 'percent' ? '%' : '₹'}
+                                                autoComplete="off"
+                                            />
+                                        </div>
+                                    )}
+                                </InlineStack>
+                            </BlockStack>
+                        </Card>
+
+                        {/* 4. Certifications & Hallmarking */}
+                        <Card>
+                            <BlockStack gap="300">
+                                <Text as="h3" variant="headingSm" fontWeight="semibold">Certifications & Tags</Text>
+                                <InlineStack gap="400">
+                                    <div style={{ flex: 1 }}>
+                                        <Select
+                                            label="Diamond Certified"
+                                            options={[
+                                                { label: '— Keep Existing —', value: 'keep' },
+                                                { label: 'Certified (Yes)', value: 'yes' },
+                                                { label: 'Not Certified (No)', value: 'no' },
+                                            ]}
+                                            value={bulkDiamondCertified}
+                                            onChange={setBulkDiamondCertified}
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <Select
+                                            label="Certifying Lab"
+                                            options={[
+                                                { label: '— Keep Existing —', value: 'keep' },
+                                                { label: 'IGI', value: 'IGI' },
+                                                { label: 'GIA', value: 'GIA' },
+                                                { label: 'SGL', value: 'SGL' },
+                                                { label: 'None / Other', value: 'None' },
+                                            ]}
+                                            value={bulkDiamondLab}
+                                            onChange={setBulkDiamondLab}
+                                        />
+                                    </div>
+                                </InlineStack>
+                            </BlockStack>
+                        </Card>
+
+                        {/* 5. Sync Option */}
+                        <Checkbox
+                            label="Automatically sync updated prices and metafields to Shopify"
+                            checked={bulkSyncToShopify}
+                            onChange={setBulkSyncToShopify}
+                            helpText="When checked, Shopify store product pages and metafields will be updated immediately."
+                        />
                     </BlockStack>
                 </Modal.Section>
             </Modal>

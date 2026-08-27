@@ -155,6 +155,170 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Bulk edit multiple products with optional price recalculation and Shopify sync
+router.post('/bulk-edit', async (req, res) => {
+    try {
+        const shopDomain = res.locals.shopify.session.shop;
+        const shop = await prisma.shop.findUnique({ where: { domain: shopDomain } });
+        if (!shop) {
+            return res.status(404).json({ error: 'Shop not found' });
+        }
+
+        const { productIds, updates, syncToShopify = true } = req.body;
+        if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+            return res.status(400).json({ error: 'Product IDs required' });
+        }
+        if (!updates || typeof updates !== 'object') {
+            return res.status(400).json({ error: 'Updates object required' });
+        }
+
+        console.log(`[BULK-EDIT] Processing bulk edit for ${productIds.length} products on ${shopDomain}`, updates);
+
+        const cleanUpdates = {};
+        const allowedFields = [
+            'enableBreakdown',
+            'enableOffer',
+            'minOfferAmount',
+            'maxOffersPerUser',
+            'makingGroupId',
+            'makingChargeType',
+            'makingChargeValue',
+            'wastagePct',
+            'gstPct',
+            'metalDiscountType',
+            'metalDiscountValue',
+            'makingDiscountType',
+            'makingDiscountValue',
+            'gemstoneDiscountType',
+            'gemstoneDiscountValue',
+            'discount',
+            'discountType',
+            'diamondCertified',
+            'diamondLab',
+            'diamondCertificateId',
+            'huid',
+            'ringSize',
+            'bangleSize',
+            'jewelryLength'
+        ];
+
+        for (const field of allowedFields) {
+            if (updates[field] !== undefined) {
+                cleanUpdates[field] = updates[field];
+            }
+        }
+
+        if (Object.keys(cleanUpdates).length === 0) {
+            return res.status(400).json({ error: 'No valid fields provided for update' });
+        }
+
+        // 1. Update database records
+        const updateResult = await prisma.product.updateMany({
+            where: {
+                id: { in: productIds },
+                shopId: shop.id
+            },
+            data: cleanUpdates
+        });
+
+        console.log(`[BULK-EDIT] Updated ${updateResult.count} products in DB`);
+
+        // Check if any price-affecting fields were modified
+        const priceAffectingFields = [
+            'makingGroupId', 'makingChargeType', 'makingChargeValue',
+            'wastagePct', 'gstPct', 'metalDiscountType', 'metalDiscountValue',
+            'makingDiscountType', 'makingDiscountValue', 'gemstoneDiscountType',
+            'gemstoneDiscountValue', 'discount', 'discountType'
+        ];
+        const hasPriceAffectingChanges = priceAffectingFields.some(f => cleanUpdates[f] !== undefined);
+
+        if (hasPriceAffectingChanges) {
+            console.log(`[BULK-EDIT] Recalculating prices for ${productIds.length} products...`);
+            const priceResults = await pricing_service_1.PricingService.calculateBulkPrices(shop.id, productIds);
+            for (const item of priceResults) {
+                await prisma.product.update({
+                    where: { id: item.productId },
+                    data: {
+                        currentPrice: item.newPrice,
+                        lastCalculatedPrice: item.newPrice,
+                        priceBreakdownHtml: JSON.stringify(item.breakdown)
+                    }
+                });
+            }
+        }
+
+        // 2. Sync to Shopify if requested
+        let syncedCount = 0;
+        const syncErrors = [];
+
+        if (syncToShopify) {
+            console.log(`[BULK-EDIT] Syncing ${productIds.length} products to Shopify...`);
+            
+            const freshProducts = await prisma.product.findMany({
+                where: {
+                    id: { in: productIds },
+                    shopId: shop.id
+                },
+                include: { gemstones: true }
+            });
+
+            for (const p of freshProducts) {
+                try {
+                    let price = p.currentPrice || 0;
+                    let breakdown = null;
+                    if (p.priceBreakdownHtml) {
+                        try {
+                            breakdown = JSON.parse(p.priceBreakdownHtml);
+                        } catch (e) {}
+                    }
+                    if (!breakdown) {
+                        const singleCalc = await pricing_service_1.PricingService.calculateBulkPrices(shop.id, [p.id]);
+                        if (singleCalc && singleCalc[0]) {
+                            price = singleCalc[0].newPrice;
+                            breakdown = singleCalc[0].breakdown;
+                        }
+                    }
+
+                    const result = await pushToShopify(
+                        shop.domain,
+                        shop.accessToken,
+                        p,
+                        price,
+                        breakdown
+                    );
+
+                    if (result && result.success) {
+                        syncedCount++;
+                        await prisma.product.update({
+                            where: { id: p.id },
+                            data: {
+                                lastPushedPrice: price,
+                                lastPushedAt: new Date()
+                            }
+                        });
+                    } else {
+                        syncErrors.push({ id: p.id, sku: p.sku, error: result?.error || 'Failed' });
+                    }
+                } catch (err) {
+                    syncErrors.push({ id: p.id, sku: p.sku, error: err.message });
+                }
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Successfully updated ${updateResult.count} products in database${syncToShopify ? ` and synced ${syncedCount} to Shopify` : ''}`,
+            updatedCount: updateResult.count,
+            syncedCount,
+            syncErrors: syncErrors.length > 0 ? syncErrors : undefined
+        });
+
+    } catch (error) {
+        console.error('[BULK-EDIT] Error in bulk edit:', error);
+        res.status(500).json({ error: error.message || 'Failed to perform bulk edit' });
+    }
+});
+
 // Update product by ID with automatic price recalculation
 router.put('/:id', async (req, res) => {
     try {

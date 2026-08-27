@@ -20,6 +20,10 @@ const filesToUpload = [
     remote: '/root/gemini-app/backend/dist/routes/offers.routes.js'
   },
   {
+    local: path.join(__dirname, 'dist', 'routes', 'products.routes.js'),
+    remote: '/root/gemini-app/backend/dist/routes/products.routes.js'
+  },
+  {
     local: path.join(__dirname, 'dist', 'server-simple.js'),
     remote: '/root/gemini-app/backend/dist/server-simple.js'
   },

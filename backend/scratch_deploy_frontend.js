@@ -66,7 +66,7 @@ conn.on('ready', () => {
     }
     
     uploadDir(localDistPath, remoteDistPath, () => {
-      console.log('✅ Frontend assets deployed successfully!');
+      console.log('✅ Frontend assets deployed successfully to VPS!');
       conn.end();
       process.exit(0);
     });
