@@ -1,32 +1,42 @@
-# Dagina Cloud — Shopify Storefront Integration & Code Guide
+# Dagina Cloud — Complete Shopify Theme Integration & Code Guide
 
-This document contains **only the custom features and code developed for Dagina Cloud**:
-1. **Transparent Price Breakdown Block** (Wastage-free, live gold calculation, toggleable per product).
-2. **Interactive "Make An Offer" Negotiation Modal** (Dynamic real-time making charge bubbles, stone discount options, GST recalculation, draft order creation & WhatsApp checkout).
-3. **Per-Product Metafield Toggles** (`enable_breakdown` & `enable_offer`) controlled directly from Dagina Cloud single & bulk edit tools.
+> **Yes, this document contains the exact 100% complete code.** You can select all and replace the entire content of `snippets/gemini-price-breakdown-enhanced.liquid` in your Shopify Theme Code Editor.
 
 ---
 
-## 📁 File Structure in Shopify Theme
+## 📋 Overview of What is Included in this File
 
-To integrate our app features into your Shopify store, only **1 snippet file** and **1 one-line render tag** are needed:
+1. **Transparent Price Breakdown**:
+   - Live Gold Purity, Metal Color, Gold Value (calculated at live market rates).
+   - Making Charges and Gemstone / Moissanite cost breakdown.
+   - 3% GST computation and final price.
+   - **Wastage row is completely removed** as requested.
+   - Controlled dynamically per-product via Dagina Cloud toggle (`product.metafields.custom.enable_breakdown`).
 
-| Action | Theme Location | Purpose |
-| :--- | :--- | :--- |
-| **Create/Update Snippet** | `snippets/gemini-price-breakdown-enhanced.liquid` | Contains the complete UI & logic for Price Breakdown and Make An Offer Modal. |
-| **Include in Product Page** | `sections/main-product.liquid` | Displays the widget right on the product page below the Buy Buttons / Price. |
+2. **Interactive "Make An Offer" Negotiation Modal**:
+   - Selectable making charge bubbles (`₹1500/g`, `₹1350/g`, `₹1200/g`, `₹1050/g`).
+   - Stone discount options (`0%`, `2%`, `5%`, `7%`, `10%`, `Custom`).
+   - Real-time instant itemized calculation inside the modal.
+   - Complete input validations for Name, 10-digit Phone, 6-digit Pincode, and City.
+   - Submits directly to backend API (`https://dagina.cloud/api/public/offers`) to generate a unique Offer ID.
+   - Automatic WhatsApp negotiation redirection with pre-formatted quote details (omitting wastage).
+   - Controlled dynamically per-product via Dagina Cloud toggle (`product.metafields.custom.enable_offer`).
 
 ---
 
-## 🛠️ Step 1: Create the Snippet in Shopify Theme
+## 🛠️ Step 1: Create / Replace Snippet in Shopify
 
-1. In **Shopify Admin**, go to **Online Store** → **Themes**.
-2. Click **`...`** (Actions) next to your live theme → **Edit code**.
-3. In the left sidebar, under **Snippets**, click **Add a new snippet**.
-4. Name it: `gemini-price-breakdown-enhanced.liquid`.
-5. Paste the complete code below and click **Save**.
+1. In **Shopify Admin**, navigate to **Online Store** → **Themes**.
+2. Click the **`...`** (Actions menu) next to your live theme → **Edit code**.
+3. Under the **Snippets** folder in the left sidebar:
+   * If `gemini-price-breakdown-enhanced.liquid` exists, open it.
+   * If it does not exist, click **Add a new snippet**, name it `gemini-price-breakdown-enhanced.liquid`, and create it.
+4. **Delete everything in that file and paste the complete code block below.**
+5. Click **Save** in the top right corner.
 
-### 💻 Code for `snippets/gemini-price-breakdown-enhanced.liquid`:
+---
+
+### 💻 Complete Code for `snippets/gemini-price-breakdown-enhanced.liquid`:
 
 ```liquid
 {% comment %}
@@ -34,6 +44,11 @@ To integrate our app features into your Shopify store, only **1 snippet file** a
   - 100% Dynamic Pricing from Dagina Cloud Engine
   - Wastage row completely removed
   - Controlled by product.metafields.custom.enable_breakdown & enable_offer
+  
+  Installation:
+  1. Replace the entire content of snippets/gemini-price-breakdown-enhanced.liquid with this code.
+  2. In sections/main-product.liquid, render it using:
+     {% render 'gemini-price-breakdown-enhanced', product: product %}
 {% endcomment %}
 
 {% assign current_variant = variant | default: product.selected_or_first_available_variant %}
@@ -49,6 +64,7 @@ To integrate our app features into your Shopify store, only **1 snippet file** a
   {% assign gst_pct_raw = breakdown.gst_pct | default: 3 %}
   {% assign total_original_raw = breakdown.total | default: 0 %}
   
+  {% comment %} Check if the product has a stone/gemstone {% endcomment %}
   {% assign has_stones = false %}
   {% if gemstone_price_raw > 0 or breakdown.gemstone_details.gemstones.size > 0 %}
     {% assign has_stones = true %}
@@ -60,23 +76,23 @@ To integrate our app features into your Shopify store, only **1 snippet file** a
     {% if product.metafields.custom.enable_offer.value == true or product.metafields.custom.enable_offer.value == 'true' %}
       <div class="gemini-offer-wrapper" style="margin-bottom: 20px;">
           
+          <!-- Button Trigger -->
           <button type="button" id="offerTriggerBtn" onclick="window.showOfferForm()" style="width: 100%; padding: 14px; background-color: #111827; color: #ffffff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px; letter-spacing: 0.1em; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background-color 0.2s;">
             🤝 Make an Offer
           </button>
 
-        <!-- Modal Backdrop Overlay -->
-        <div id="makeOfferModalOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 100000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-          <div style="background: #ffffff; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 25px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.15); box-sizing: border-box; text-align: left;">
+        <!-- Modal Backdrop Overlay (hidden by default) -->
+        <div id="makeOfferModalOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 100000; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.3s ease-in-out;">
+          <div style="background: #ffffff; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 25px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.15); animation: modalSlideIn 0.3s ease-out; box-sizing: border-box; text-align: left;">
             
             <!-- Close Button (×) -->
-            <button type="button" onclick="window.hideOfferForm()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; font-weight: 300; cursor: pointer; color: #9ca3af; line-height: 1;">
+            <button type="button" onclick="window.hideOfferForm()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; font-weight: 300; cursor: pointer; color: #9ca3af; transition: color 0.2s; line-height: 1;" onmouseover="this.style.color='#374151'" onmouseout="this.style.color='#9ca3af'">
               &times;
             </button>
 
             <!-- Offer Negotiation Form Content -->
-            <div id="offerFormState" style="display: block;">
-              
-              <!-- Real-Time Price Comparison Header -->
+            <div id="offerFormState" style="display: none;">
+              <!-- Price Comparison Header -->
               <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: #64748b; font-size: 14px;">
                   <span>Website Price (incl. GST):</span>
@@ -90,7 +106,7 @@ To integrate our app features into your Shopify store, only **1 snippet file** a
                   You save: Rs. 0.00
                 </div>
 
-                <!-- Dynamic Itemized Calculation Card inside Modal -->
+                <!-- Detailed Breakdown inside Modal (Dynamic) -->
                 <div id="modalOfferDetailBreakdown" style="border-top: 1px dashed #cbd5e1; padding-top: 10px; font-size: 13px; color: #475569; display: flex; flex-direction: column; gap: 6px;">
                   <div style="display: flex; justify-content: space-between;">
                     <span>🪙 Gold Price (Fixed):</span>
@@ -114,17 +130,17 @@ To integrate our app features into your Shopify store, only **1 snippet file** a
               </div>
 
               <form id="offerNegotiationForm" novalidate>
-                <!-- Negotiation Inputs -->
+                <!-- Negotiation Fields -->
                 <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;">
                   
-                  <!-- Making Charges Bubbles -->
+                  <!-- Making Charges Input (Bubbles) -->
                   <div>
                     <label style="display: block; font-size: 12px; font-weight: bold; color: #374151; margin-bottom: 8px;">
                       Making Charges Offer <span style="font-weight: normal; color: #6b7280;">(Current: ₹{{ breakdown.making_charge_rate }}/g)</span>
                     </label>
                     <div class="making-bubbles-container" style="display: flex; gap: 8px; flex-wrap: wrap;">
                       {% for bubble in breakdown.making_charge_bubbles %}
-                        <button type="button" class="making-bubble-btn {% if forloop.first %}active{% endif %}" data-rate="{{ bubble }}" onclick="window.selectMakingBubble(this)" style="padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 20px; background: {% if forloop.first %}#111827{% else %}#ffffff{% endif %}; color: {% if forloop.first %}#ffffff{% else %}#333333{% endif %}; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s;">
+                        <button type="button" class="making-bubble-btn {% if forloop.first %}active{% endif %}" data-rate="{{ bubble }}" onclick="window.selectMakingBubble(this)" style="padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 20px; background: #ffffff; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s;">
                           ₹{{ bubble }}/g
                         </button>
                       {% endfor %}
@@ -132,18 +148,19 @@ To integrate our app features into your Shopify store, only **1 snippet file** a
                     <input type="hidden" id="offerMakingInput" value="{{ breakdown.making_charge_bubbles[0] }}">
                   </div>
                   
-                  <!-- Stone Discount Dropdown (if stones exist) -->
+                  <!-- Stone Discount Input (Dropdown) -->
                   {% if has_stones %}
                   <div>
                     <label style="display: block; font-size: 12px; font-weight: bold; color: #374151; margin-bottom: 8px;">
                       Stone Value Discount
                     </label>
-                    <select id="stoneDiscountSelect" onchange="window.handleStoneDiscountChange(this)" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background-color: white; font-weight: 500;">
+                    <select id="stoneDiscountSelect" onchange="window.handleStoneDiscountChange(this)" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background-color: white; font-weight: 500; outline: none;">
                       {% for opt in breakdown.stone_discount_options %}
                         <option value="{{ opt }}">{{ opt }}</option>
                       {% endfor %}
                     </select>
                     
+                    <!-- Custom Discount Text Field -->
                     <div id="customStoneDiscountWrapper" style="display: none; margin-top: 10px;">
                       <label style="display: block; font-size: 11px; color: #4b5563; margin-bottom: 4px;">Enter custom stone discount (%)</label>
                       <input type="number" id="customStoneDiscountInput" min="0" max="100" placeholder="e.g. 15" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
@@ -152,60 +169,81 @@ To integrate our app features into your Shopify store, only **1 snippet file** a
                   {% endif %}
                 </div>
 
-                <!-- Customer Details -->
+                <!-- Contact Details -->
                 <div style="border-top: 1px solid #f3f4f6; padding-top: 15px; margin-bottom: 20px;">
-                  <h4 style="margin: 0 0 15px 0; font-size: 13px; font-weight: bold; color: #374151; text-transform: uppercase;">
-                    Customer Details
+                  <h4 style="margin: 0 0 15px 0; font-size: 13px; font-weight: bold; color: #374151; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Contact Details
                   </h4>
                   
                   <div style="margin-bottom: 12px;">
                     <label for="negName" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">Your Full Name *</label>
-                    <input type="text" id="negName" required placeholder="e.g. Rahul Sharma" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                    <input type="text" id="negName" required placeholder="e.g. Rahul Sharma" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;">
+                    <div class="field-error" id="error_negName" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid Name (letters and spaces only, min 2 chars).</div>
                   </div>
 
                   <div style="margin-bottom: 12px;">
-                    <label for="negPhone" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">WhatsApp / Mobile Number *</label>
-                    <input type="tel" id="negPhone" required placeholder="10-digit mobile number" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                    <label for="negPhone" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">Phone / WhatsApp Number *</label>
+                    <input type="tel" id="negPhone" required placeholder="10-digit mobile number" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;">
+                    <div class="field-error" id="error_negPhone" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid 10-digit phone number.</div>
                   </div>
 
                   <div style="margin-bottom: 12px;">
                     <label for="negEmail" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">Email Address (Optional)</label>
-                    <input type="email" id="negEmail" placeholder="e.g. rahul@example.com" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                    <input type="email" id="negEmail" placeholder="e.g. rahul@example.com" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;">
+                    <div class="field-error" id="error_negEmail" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid email address.</div>
                   </div>
 
                   <div style="display: flex; gap: 15px;">
                     <div style="flex: 1;">
                       <label for="negPincode" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">Pincode *</label>
-                      <input type="text" id="negPincode" required placeholder="6 digits" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                      <input type="text" id="negPincode" required placeholder="6 digits" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;">
+                      <div class="field-error" id="error_negPincode" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid 6-digit Pincode.</div>
                     </div>
                     <div style="flex: 1;">
                       <label for="negCity" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">City *</label>
-                      <input type="text" id="negCity" required placeholder="Your City" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                      <input type="text" id="negCity" required placeholder="Your City" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;">
+                      <div class="field-error" id="error_negCity" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid City (min 2 chars).</div>
                     </div>
+                  </div>
+
+                  <div style="margin-top: 12px;">
+                    <label for="negMessage" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">Any special request? (Optional)</label>
+                    <textarea id="negMessage" rows="2" placeholder="Describe any specific customization requests..." style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical;"></textarea>
                   </div>
                 </div>
 
+                <!-- Global Error Messages -->
                 <div id="negErrorMsg" style="display: none; color: #b91c1c; background-color: #fef2f2; border: 1px solid #fca5a5; padding: 12px; border-radius: 6px; font-weight: 600; margin-bottom: 15px; text-align: center; font-size: 13px;"></div>
 
                 <div style="display: flex; gap: 10px;">
-                  <button type="submit" id="negSubmitBtn" style="flex: 2; padding: 14px; background-color: #10b981; color: #ffffff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px;">
+                  <button type="submit" id="negSubmitBtn" style="flex: 2; padding: 12px; background-color: #10b981; color: #ffffff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px;">
                     Submit Offer
                   </button>
-                  <button type="button" onclick="window.hideOfferForm()" style="flex: 1; padding: 14px; background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px;">
+                  <button type="button" onclick="window.hideOfferForm()" style="flex: 1; padding: 12px; background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px;">
                     Cancel
                   </button>
                 </div>
               </form>
             </div>
 
-            <!-- Success State with Direct WhatsApp Quote Link -->
+            <!-- Success Message Box -->
             <div id="negSuccessState" style="display: none; text-align: center;">
-              <h3 style="margin: 0 0 10px 0; color: #065f46; font-size: 18px; font-weight: bold;">Offer Submitted Successfully!</h3>
-              <p style="margin: 0 0 8px 0; color: #047857; font-size: 14px;">
-                Your Offer ID: <span id="successOfferId" style="font-weight: 700; color: #065f46;"></span>
+              <div style="display: flex; justify-content: center; margin-bottom: 12px;">
+                <svg style="width: 36px; height: 36px; fill: #10b981;" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-1.25 17.292l-4.5-4.364 1.857-1.857 2.643 2.507 5.643-5.583 1.857 1.857-7.5 7.44z"/></svg>
+              </div>
+              <h3 style="margin: 0 0 10px 0; color: #065f46; font-size: 18px; font-weight: bold;">Offer Submitted Successfully</h3>
+              <p style="margin: 0 0 8px 0; color: #047857; font-size: 14px; font-weight: 500;">
+                Your unique Offer ID: <span id="successOfferId" style="font-weight: 700; color: #065f46;"></span>
               </p>
-              <button type="button" id="whatsAppRedirectBtn" style="width: 100%; padding: 14px; background-color: #25d366; color: #ffffff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; margin-top: 15px;">
-                💬 Continue on WhatsApp
+              <p style="margin: 0 0 20px 0; color: #047857; font-size: 13px;">Our jewellery consultant will review your offer.</p>
+              
+              <button type="button" id="whatsAppRedirectBtn" style="width: 100%; padding: 12px; background-color: #25d366; color: #ffffff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <svg style="width: 18px; height: 18px; fill: white;" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.197 1.451 4.92 1.453 5.461 0 9.902-4.444 9.905-9.906.002-2.646-1.026-5.133-2.897-7.006C16.687 1.82 14.204.793 11.562.793 6.103.793 1.66 5.237 1.657 10.697c-.001 1.815.485 3.591 1.411 5.161l-.963 3.517 3.606-.946zm11.45-6.905c-.328-.164-1.94-.959-2.241-1.07-.301-.11-.52-.164-.738.164-.219.329-.848 1.07-1.04 1.289-.192.219-.384.246-.712.082-1.393-.698-2.39-1.22-3.32-2.825-.24-.411-.024-.633.2-.856.2-.2.438-.507.658-.76.22-.253.293-.432.438-.72.146-.288.073-.541-.036-.76-.11-.22-.924-2.227-1.267-3.052-.334-.805-.672-.695-.924-.708-.239-.012-.513-.014-.788-.014-.275 0-.72.103-1.096.513-.377.411-1.44 1.408-1.44 3.434 0 2.026 1.474 3.985 1.679 4.26.205.275 2.9 4.428 7.027 6.21 4.127 1.782 4.127 1.188 4.881 1.117.753-.07 2.427-.992 2.766-1.954.34-.962.34-1.788.238-1.96-.102-.172-.383-.282-.71-.446z"/></svg>
+                Continue on WhatsApp
+              </button>
+
+              <button type="button" id="closeSuccessBtn" onclick="window.hideOfferForm()" style="width: 100%; padding: 12px; background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; text-transform: uppercase; margin-top: 10px; transition: background-color 0.2s;">
+                Done
               </button>
             </div>
 
@@ -226,8 +264,8 @@ To integrate our app features into your Shopify store, only **1 snippet file** a
 
     {% if show_breakdown %}
       <div class="gemini-price-breakdown" style="border: 1px solid #e1e3e5; border-radius: 8px; overflow: hidden; background: #ffffff; margin-top: 15px;">
-        <div style="background-color: #f9fafb; padding: 12px 16px; font-size: 15px; border-bottom: 1px solid #e1e3e5; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
-          <span>Transparent Price Breakdown</span>
+        <div style="background-color: #f9fafb; margin: 0; padding: 12px 16px; font-size: 15px; border-bottom: 1px solid #e1e3e5; font-weight: 600; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+          <span>Price Breakdown</span>
           <span style="font-size: 12px; color: #059669; background: #ecfdf5; padding: 2px 8px; border-radius: 4px; font-weight: 600;">100% Certified</span>
         </div>
         
@@ -235,210 +273,492 @@ To integrate our app features into your Shopify store, only **1 snippet file** a
           <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
             <tbody>
               
-              <!-- 1. Gold Rate & Metal Value -->
+              <!-- 1. Metal Details -->
               <tr style="border-bottom: 1px solid #f1f2f3;">
-                <td style="padding: 10px 16px; color: #374151;">
-                  🪙 {{ breakdown.metal_name | default: 'Gold' }} ({{ breakdown.weight | default: product.variants.first.weight | divided_by: 1000.0 }}g)
+                <td style="padding: 10px 16px; color: #374151;">Gold Purity</td>
+                <td style="padding: 10px 16px; text-align: right; font-weight: 500;">{{ breakdown.metal_name | default: 'N/A' }}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #e1e3e5;">
+                <td style="padding: 10px 16px; color: #374151;">Metal Color</td>
+                <td style="padding: 10px 16px; text-align: right; font-weight: 500;">
+                  {{ product.selected_or_first_available_variant.title | replace: 'Default Title', 'Standard' }}
                 </td>
-                <td style="padding: 10px 16px; text-align: right; font-weight: 600; color: #111827;">
+              </tr>
+
+              <!-- 2. Metal Value -->
+              <tr style="border-bottom: 1px solid #f1f2f3;">
+                <td style="padding: 10px 16px; color: #374151; display: flex; align-items: center; gap: 8px;">
+                  <span>🪙 {{ breakdown.metal_name | default: 'Metal' }} Price</span>
+                  <span class="badge badge-fixed" style="font-size: 10px; font-weight: bold; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">Fixed</span>
+                </td>
+                <td style="padding: 10px 16px; text-align: right; font-weight: 500;">
                   {{ breakdown.metal_value | money }}
                 </td>
               </tr>
 
-              <!-- 2. Making Charges -->
+              <!-- 3. Gemstones / Diamonds -->
+              {% if breakdown.gemstone_details.type == 'multiple' and breakdown.gemstone_details.gemstones %}
+                {% for gem in breakdown.gemstone_details.gemstones %}
+                  <tr style="border-bottom: 1px solid #f1f2f3;">
+                    <td style="padding: 10px 16px; color: #374151; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                      <span>
+                        💎 {{ gem.type }}
+                        {% if gem.clarity %}({{ gem.clarity }}){% endif %}
+                        {% if gem.color %}{{ gem.color }}{% endif %}
+                      </span>
+                      <span class="badge badge-negotiable" style="font-size: 10px; font-weight: bold; background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">Negotiable</span>
+                    </td>
+                    <td style="padding: 10px 16px; text-align: right; font-weight: 500;">
+                      {{ gem.finalCost | money }}
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% elsif breakdown.gemstone_price > 0 %}
+                <tr style="border-bottom: 1px solid #f1f2f3;">
+                  <td style="padding: 10px 16px; color: #374151; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                    <span>💎 {{ breakdown.gemstone_name | default: 'Gemstone' }}</span>
+                    <span class="badge badge-negotiable" style="font-size: 10px; font-weight: bold; background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">Negotiable</span>
+                  </td>
+                  <td style="padding: 10px 16px; text-align: right; font-weight: 500;">
+                    {{ breakdown.gemstone_price | money }}
+                  </td>
+                </tr>
+              {% endif %}
+              
+              <!-- 4. Making Charges -->
               <tr style="border-bottom: 1px solid #f1f2f3;">
-                <td style="padding: 10px 16px; color: #374151;">
-                  🛠️ Making Charges
+                <td style="padding: 10px 16px; color: #374151; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                  <div style="display: flex; flex-direction: column;">
+                    <span>🛠️ Making Charges</span>
+                    <span style="font-size: 11px; color: #6b7280; font-weight: normal; margin-top: 2px;">
+                      {% if breakdown.making_charge_type == 'percent' %}
+                        {{ breakdown.making_charge_rate }}% of value
+                      {% elsif breakdown.making_charge_type == 'flat' %}
+                        Flat Rate
+                      {% else %}
+                        ₹{{ breakdown.making_charge_rate }}/g
+                      {% endif %}
+                    </span>
+                  </div>
+                  <span class="badge badge-negotiable" style="font-size: 10px; font-weight: bold; background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">Negotiable</span>
                 </td>
-                <td style="padding: 10px 16px; text-align: right; font-weight: 600; color: #111827;">
+                <td style="padding: 10px 16px; text-align: right; font-weight: 500;">
                   {{ breakdown.making_charges | money }}
                 </td>
               </tr>
-
-              <!-- 3. Gemstones / Moissanite (if any) -->
-              {% if gemstone_price_raw > 0 %}
+              
+              <!-- 5. Subtotal -->
+              <tr style="background-color: #fafbfb; border-top: 1px solid #e1e3e5;">
+                <td style="padding: 8px 16px; font-weight: 600; color: #374151;">Subtotal</td>
+                <td style="padding: 8px 16px; text-align: right; font-weight: 600; color: #374151;">
+                  {{ breakdown.subtotal | money }}
+                </td>
+              </tr>
+              
+              <!-- 6. GST (3%) -->
               <tr style="border-bottom: 1px solid #f1f2f3;">
-                <td style="padding: 10px 16px; color: #374151;">
-                  💎 Gemstone / Stone Cost
+                <td style="padding: 10px 16px; color: #374151; display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                  <span>🏛️ GST ({{ breakdown.gst_pct }}%)</span>
+                  <span class="badge badge-fixed" style="font-size: 10px; font-weight: bold; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">Fixed</span>
                 </td>
-                <td style="padding: 10px 16px; text-align: right; font-weight: 600; color: #111827;">
-                  {{ breakdown.gemstone_price | money }}
-                </td>
-              </tr>
-              {% endif %}
-
-              <!-- 4. GST (3%) -->
-              <tr style="border-bottom: 1px solid #e1e3e5;">
-                <td style="padding: 10px 16px; color: #374151;">
-                  🏛️ Applicable GST ({{ breakdown.gst_pct | default: 3 }}%)
-                </td>
-                <td style="padding: 10px 16px; text-align: right; font-weight: 600; color: #111827;">
-                  {% assign gst_amount_calc = breakdown.gst_amount | default: breakdown.gst | default: 0 %}
-                  {{ gst_amount_calc | money }}
+                <td style="padding: 10px 16px; text-align: right; font-weight: 500;">
+                  {% assign gst_value = breakdown.gst_amount | default: breakdown.gst | default: 0 %}
+                  {{ gst_value | money }}
                 </td>
               </tr>
-
-              <!-- 5. Final Total Price -->
-              <tr style="background-color: #f9fafb; font-weight: bold; font-size: 15px;">
-                <td style="padding: 12px 16px; color: #111827;">Total Price</td>
-                <td style="padding: 12px 16px; text-align: right; color: #b8860b; font-size: 16px;">
+              
+              <!-- 7. Final Price -->
+              <tr style="background-color: #f0fdf4;">
+                <td style="padding: 14px 16px; font-weight: 700; color: #166534; font-size: 16px;">Final Price</td>
+                <td style="padding: 14px 16px; text-align: right; font-weight: 700; color: #166534; font-size: 16px;">
                   {{ breakdown.total | money }}
                 </td>
               </tr>
-
+              
             </tbody>
           </table>
+          <div style="margin-top: 8px; padding: 8px 16px; font-size: 12px; color: #6b7280; text-align: center;">
+            Prices are subject to change based on market rates. Offers are applicable only on stone value and/or making charges.
+          </div>
         </div>
+
       </div>
     {% endif %}
 
   </div>
 
+  <style>
+    .making-bubble-btn:hover {
+      border-color: #111827 !important;
+      background: #f9fafb !important;
+    }
+    .making-bubble-btn.active {
+      border-color: #111827 !important;
+      background: #111827 !important;
+      color: #ffffff !important;
+    }
+  </style>
+
   <!-- ==================== 3. EMBEDDED REAL-TIME JS ENGINE ==================== -->
   <script>
-    (function() {
-      var breakdownData = {{ breakdown | json }};
-      var currentMakingRate = breakdownData.making_charge_rate || 1500;
-      var currentStoneDiscountPct = 0;
+    const CURRENT_VARIANT_ID = "{{ current_variant.id }}";
+    const BASE_PRICE = {{ total_original_raw | times: 0.01 }};
+    const PRODUCT_TITLE = "{{ product.title | escape }}";
+    const PRODUCT_SKU = "{{ current_variant.sku | default: product.selected_or_first_available_variant.sku | default: product.variants[0].sku | default: 'N/A' }}";
 
-      window.showOfferForm = function() {
-        var modal = document.getElementById('makeOfferModalOverlay');
-        if (modal) {
-          modal.style.display = 'flex';
-          recalcOffer();
-        }
-      };
+    let selectedMakingRate = "{{ breakdown.making_charge_bubbles[0] }}";
+    let selectedStoneDiscount = "0%";
+    let lastCalculatedBreakdown = null;
 
-      window.hideOfferForm = function() {
-        var modal = document.getElementById('makeOfferModalOverlay');
-        if (modal) modal.style.display = 'none';
-      };
+    window.selectMakingBubble = function(buttonElement) {
+      const buttons = document.querySelectorAll('.making-bubble-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      buttonElement.classList.add('active');
 
-      window.selectMakingBubble = function(btn) {
-        document.querySelectorAll('.making-bubble-btn').forEach(function(b) {
-          b.style.background = '#ffffff';
-          b.style.color = '#333333';
-        });
-        btn.style.background = '#111827';
-        btn.style.color = '#ffffff';
-        currentMakingRate = parseFloat(btn.getAttribute('data-rate'));
-        document.getElementById('offerMakingInput').value = currentMakingRate;
-        recalcOffer();
-      };
+      selectedMakingRate = buttonElement.getAttribute('data-rate');
+      document.getElementById('offerMakingInput').value = selectedMakingRate;
+      triggerCalculate();
+    };
 
-      window.handleStoneDiscountChange = function(sel) {
-        var val = sel.value;
-        if (val === 'Custom') {
-          document.getElementById('customStoneDiscountWrapper').style.display = 'block';
-          currentStoneDiscountPct = parseFloat(document.getElementById('customStoneDiscountInput').value) || 0;
-        } else {
-          document.getElementById('customStoneDiscountWrapper').style.display = 'none';
-          currentStoneDiscountPct = parseFloat(val.replace('%', '')) || 0;
-        }
-        recalcOffer();
-      };
-
-      function recalcOffer() {
-        var weight = breakdownData.weight || ({{ product.variants.first.weight }} / 1000.0) || 0;
-        var metalVal = breakdownData.metal_value || 0;
-        var originalMaking = breakdownData.making_charges || 0;
-        var originalGem = breakdownData.gemstone_price || 0;
-        var gstPct = breakdownData.gst_pct || 3;
-
-        // New Making = weight * selected bubble rate
-        var newMaking = Math.round(weight * currentMakingRate * 100);
-        var newGem = Math.round(originalGem * (1 - (currentStoneDiscountPct / 100.0)));
-        var subtotal = metalVal + newMaking + newGem;
-        var gst = Math.round(subtotal * (gstPct / 100.0));
-        var total = subtotal + gst;
-
-        var fmt = function(paise) { return 'Rs. ' + (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 }); };
-
-        if (document.getElementById('offeredTotalDisplay')) document.getElementById('offeredTotalDisplay').innerText = fmt(total);
-        if (document.getElementById('modalMakingVal')) document.getElementById('modalMakingVal').innerText = fmt(newMaking);
-        if (document.getElementById('modalGemstoneVal')) document.getElementById('modalGemstoneVal').innerText = fmt(newGem);
-        if (document.getElementById('modalGstVal')) document.getElementById('modalGstVal').innerText = fmt(gst);
-
-        var originalTotal = breakdownData.total || 0;
-        var savings = Math.max(0, originalTotal - total);
-        if (document.getElementById('savingsDisplay')) document.getElementById('savingsDisplay').innerText = 'You save: ' + fmt(savings);
+    window.handleStoneDiscountChange = function(selectElement) {
+      const customWrapper = document.getElementById('customStoneDiscountWrapper');
+      if (selectElement.value.toLowerCase() === 'custom') {
+        customWrapper.style.display = 'block';
+        selectedStoneDiscount = '0%';
+      } else {
+        customWrapper.style.display = 'none';
+        selectedStoneDiscount = selectElement.value;
+        triggerCalculate();
       }
+    };
 
-      // Handle Form Submit
-      var form = document.getElementById('offerNegotiationForm');
-      if (form) {
-        form.addEventListener('submit', function(e) {
-          e.preventDefault();
-          var btn = document.getElementById('negSubmitBtn');
-          btn.disabled = true;
-          btn.innerText = 'Processing...';
+    const customStoneInput = document.getElementById('customStoneDiscountInput');
+    if (customStoneInput) {
+      customStoneInput.addEventListener('input', function() {
+        const val = parseFloat(this.value) || 0;
+        selectedStoneDiscount = val + '%';
+        triggerCalculate();
+      });
+    }
 
-          var payload = {
-            shopDomain: '{{ shop.permanent_domain }}',
-            productId: '{{ product.id }}',
-            variantId: '{{ current_variant.id }}',
-            productTitle: {{ product.title | json }},
-            sku: '{{ current_variant.sku }}',
-            customerName: document.getElementById('negName').value,
-            customerPhone: document.getElementById('negPhone').value,
-            customerEmail: document.getElementById('negEmail').value,
-            pincode: document.getElementById('negPincode').value,
-            city: document.getElementById('negCity').value,
-            offeredMakingRate: currentMakingRate,
-            stoneDiscountPct: currentStoneDiscountPct
+    function triggerCalculate() {
+      const displayTotal = document.getElementById('offeredTotalDisplay');
+      displayTotal.style.opacity = '0.5';
+
+      const cleanStoneDiscount = parseFloat(selectedStoneDiscount.replace('%', '')) || 0;
+
+      fetch('https://dagina.cloud/api/public/offers/calculate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          shopDomain: Shopify.shop,
+          shopifyVariantId: CURRENT_VARIANT_ID,
+          proposedMakingRate: parseFloat(selectedMakingRate),
+          proposedStoneDiscount: cleanStoneDiscount
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        displayTotal.style.opacity = '1';
+        if (data.success && data.breakdown) {
+          lastCalculatedBreakdown = data.breakdown;
+          const offeredTotal = data.breakdown.total / 100;
+          displayTotal.innerText = '₹' + offeredTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          
+          const savings = BASE_PRICE - offeredTotal;
+          const savingsDisplay = document.getElementById('savingsDisplay');
+          if (savings > 0.01) {
+            savingsDisplay.innerText = 'You save: ₹' + savings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            savingsDisplay.style.color = '#10b981';
+          } else {
+            savingsDisplay.innerText = 'You save: ₹0.00';
+            savingsDisplay.style.color = '#6b7280';
+          }
+
+          const formatCurrency = (val) => {
+            return '₹' + (val / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
           };
+          if (document.getElementById('modalGoldVal')) document.getElementById('modalGoldVal').innerText = formatCurrency(data.breakdown.metal_value);
+          if (document.getElementById('modalMakingVal')) document.getElementById('modalMakingVal').innerText = formatCurrency(data.breakdown.making_charges);
+          if (document.getElementById('modalGemstoneVal')) document.getElementById('modalGemstoneVal').innerText = formatCurrency(data.breakdown.gemstone_price);
+          if (document.getElementById('modalGstVal')) document.getElementById('modalGstVal').innerText = formatCurrency(data.breakdown.gst_amount);
+        }
+      })
+      .catch(err => {
+        displayTotal.style.opacity = '1';
+        console.error('Error triggering calculate:', err);
+      });
+    }
 
-          fetch('https://dagina.cloud/api/offers', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          })
-          .then(function(res) { return res.json(); })
-          .then(function(data) {
-            document.getElementById('offerFormState').style.display = 'none';
-            document.getElementById('negSuccessState').style.display = 'block';
-            document.getElementById('successOfferId').innerText = data.offerId || 'OFFER-' + Date.now();
-            
-            var waBtn = document.getElementById('whatsAppRedirectBtn');
-            if (waBtn && data.whatsappUrl) {
-              waBtn.onclick = function() { window.open(data.whatsappUrl, '_blank'); };
-            }
-          })
-          .catch(function(err) {
-            alert('Failed to submit offer. Please try again.');
-            btn.disabled = false;
-            btn.innerText = 'Submit Offer';
-          });
+    window.showOfferForm = function() {
+      document.getElementById('makeOfferModalOverlay').style.display = 'flex';
+      document.getElementById('offerFormState').style.display = 'block';
+      document.getElementById('negSuccessState').style.display = 'none';
+      triggerCalculate();
+    };
+
+    window.hideOfferForm = function() {
+      document.getElementById('makeOfferModalOverlay').style.display = 'none';
+      document.getElementById('offerFormState').style.display = 'none';
+      document.getElementById('negSuccessState').style.display = 'none';
+      
+      document.getElementById('offerNegotiationForm').reset();
+      document.getElementById('negErrorMsg').style.display = 'none';
+      document.getElementById('customStoneDiscountWrapper').style.display = 'none';
+      
+      const errors = document.querySelectorAll('.field-error');
+      errors.forEach(e => e.style.display = 'none');
+      
+      const inputs = document.querySelectorAll('#offerNegotiationForm input');
+      inputs.forEach(i => {
+        i.style.borderColor = '#d1d5db';
+        i.style.backgroundColor = '#ffffff';
+      });
+    }
+
+    function validateField(id, validatorFn) {
+      const input = document.getElementById(id);
+      const errorDiv = document.getElementById('error_' + id);
+      const isValid = validatorFn(input.value);
+      
+      if (!isValid) {
+        input.style.borderColor = '#ef4444';
+        input.style.backgroundColor = '#fef2f2';
+        if (errorDiv) errorDiv.style.display = 'block';
+      } else {
+        input.style.borderColor = '#10b981';
+        input.style.backgroundColor = '#f0fdf4';
+        if (errorDiv) errorDiv.style.display = 'none';
+      }
+      return isValid;
+    }
+
+    const validators = {
+      negName: val => /^[a-zA-Z\s.]{2,50}$/.test(val.trim()),
+      negPhone: val => /^[0-9]{10}$/.test(val.trim()),
+      negEmail: val => !val.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim()),
+      negPincode: val => /^[0-9]{6}$/.test(val.trim()),
+      negCity: val => /^[a-zA-Z\s]{2,50}$/.test(val.trim())
+    };
+
+    function setupNegotiationListeners() {
+      const modal = document.getElementById('makeOfferModalOverlay');
+      if (modal && modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+      }
+
+      const nameInput = document.getElementById('negName');
+      const phoneInput = document.getElementById('negPhone');
+      const emailInput = document.getElementById('negEmail');
+      const pincodeInput = document.getElementById('negPincode');
+      const cityInput = document.getElementById('negCity');
+
+      if (nameInput) {
+        nameInput.addEventListener('input', function() {
+          this.value = this.value.replace(/[^a-zA-Z\s.]/g, '');
+          validateField('negName', validators.negName);
         });
       }
-    })();
+      if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+          this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+          validateField('negPhone', validators.negPhone);
+        });
+      }
+      if (emailInput) {
+        emailInput.addEventListener('input', function() {
+          validateField('negEmail', validators.negEmail);
+        });
+      }
+      if (pincodeInput) {
+        pincodeInput.addEventListener('input', function() {
+          this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+          validateField('negPincode', validators.negPincode);
+        });
+      }
+      if (cityInput) {
+        cityInput.addEventListener('input', function() {
+          this.value = this.value.replace(/[^a-zA-Z\s]/g, '');
+          validateField('negCity', validators.negCity);
+        });
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupNegotiationListeners);
+    } else {
+      setupNegotiationListeners();
+    }
+
+    const offerForm = document.getElementById('offerNegotiationForm');
+    if (offerForm) {
+      offerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const errorMsg = document.getElementById('negErrorMsg');
+        errorMsg.style.display = 'none';
+
+        let formValid = true;
+        formValid = validateField('negName', validators.negName) && formValid;
+        formValid = validateField('negPhone', validators.negPhone) && formValid;
+        formValid = validateField('negEmail', validators.negEmail) && formValid;
+        formValid = validateField('negPincode', validators.negPincode) && formValid;
+        formValid = validateField('negCity', validators.negCity) && formValid;
+
+        if (!formValid) {
+          errorMsg.innerText = "Please fix the highlighted errors before submitting.";
+          errorMsg.style.display = 'block';
+          return;
+        }
+
+        const name = document.getElementById('negName').value.trim();
+        const phone = document.getElementById('negPhone').value.trim();
+        const email = document.getElementById('negEmail').value.trim();
+        const pincode = document.getElementById('negPincode').value.trim();
+        const city = document.getElementById('negCity').value.trim();
+        const message = document.getElementById('negMessage').value.trim();
+        
+        const cleanStoneDiscount = parseFloat(selectedStoneDiscount.replace('%', '')) || 0;
+
+        const submitBtn = document.getElementById('negSubmitBtn');
+        submitBtn.innerText = 'SENDING...';
+        submitBtn.disabled = true;
+
+        const payload = {
+          shopDomain: Shopify.shop,
+          shopifyVariantId: CURRENT_VARIANT_ID,
+          customerName: name,
+          customerPhone: phone,
+          customerEmail: email || null,
+          proposedMakingRate: parseFloat(selectedMakingRate),
+          proposedStoneDiscount: cleanStoneDiscount,
+          message: message || null,
+          pincode: pincode,
+          city: city
+        };
+
+        fetch('https://dagina.cloud/api/public/offers', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(errData => {
+              throw new Error(errData.error || 'Server error.');
+            });
+          }
+          return response.json();
+        })
+        .then(data => {
+          submitBtn.innerText = 'Submit Offer';
+          submitBtn.disabled = false;
+          
+          if (data.success) {
+            document.getElementById('offerFormState').style.display = 'none';
+            document.getElementById('successOfferId').innerText = data.offerId;
+            document.getElementById('negSuccessState').style.display = 'block';
+
+            const whatsAppBtn = document.getElementById('whatsAppRedirectBtn');
+            if (data.whatsappNotifications && data.notificationWhatsapp) {
+              whatsAppBtn.style.display = 'flex';
+              whatsAppBtn.onclick = function() {
+                let waText = `Hello AKD Team,\n\n` +
+                  `I have submitted an offer.\n\n` +
+                  `Offer ID: ${data.offerId}\n` +
+                  `Product: ${PRODUCT_TITLE}\n` +
+                  `SKU: ${PRODUCT_SKU}\n\n`;
+
+                if (lastCalculatedBreakdown) {
+                  const b = lastCalculatedBreakdown;
+                  const metalVal = (b.metal_value / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const metalRate = (b.metal_rate / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const makingVal = (b.making_charges / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const makingRateVal = b.making_charge_type === 'percent' 
+                    ? `${b.making_charge_rate}%`
+                    : `₹${b.making_charge_rate}/g`;
+                  const gstVal = (b.gst_amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const gemstoneVal = (b.gemstone_price / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const totalVal = (b.total / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+
+                  waText += `--- PRICING BREAKDOWN ---\n` +
+                    `🪙 Metal: ${b.metal_name || 'Gold'} (Gross: ${b.gross_weight || 0}g, Net: ${b.net_weight || 0}g)\n` +
+                    `🪙 Metal Price: ₹${metalVal} (@ ₹${metalRate}/g)\n` +
+                    `🛠️ Making Charges: ₹${makingVal} (@ ${makingRateVal})\n` +
+                    `💎 Gemstones: ₹${gemstoneVal}\n`;
+
+                  if (b.gemstone_details && b.gemstone_details.gemstones && b.gemstone_details.gemstones.length > 0) {
+                    b.gemstone_details.gemstones.forEach(gem => {
+                      const gemCost = (gem.finalCost / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                      waText += `  └ ${gem.type} (${gem.gemstonePieces || 0} pcs, ${gem.gemstoneWeight || 0} ct): ₹${gemCost}\n`;
+                    });
+                  }
+
+                  waText += `🧾 GST (${b.gst_pct}%): ₹${gstVal}\n\n` +
+                    `💰 Estimated Total: ₹${totalVal}\n\n`;
+                } else {
+                  waText += `Current Price: ₹${BASE_PRICE.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n` +
+                    `My Offer:\n` +
+                    `Making: ₹${selectedMakingRate}/g\n` +
+                    `Stone: ${selectedStoneDiscount}\n` +
+                    `Estimated Total: ₹${data.offerAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n`;
+                }
+
+                waText += `Customer: ${name}\n` +
+                  `Phone: ${phone}\n\n` +
+                  `Please review.\n\n` +
+                  `Thank you.`;
+
+                const waUrl = `https://wa.me/${data.notificationWhatsapp}?text=${encodeURIComponent(waText)}`;
+                window.open(waUrl, '_blank');
+              };
+            } else {
+              whatsAppBtn.style.display = 'none';
+            }
+          } else {
+            errorMsg.innerText = data.error || 'Something went wrong.';
+            errorMsg.style.display = 'block';
+          }
+        })
+        .catch(error => {
+          console.error('Offer submission error:', error);
+          submitBtn.innerText = 'Submit Offer';
+          submitBtn.disabled = false;
+          errorMsg.innerText = error.message || 'Connection error. Please try again.';
+          errorMsg.style.display = 'block';
+        });
+      });
+    }
   </script>
 {% endif %}
+
+<style>
+  @keyframes modalSlideIn {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @media (max-width: 768px) {
+    .gemini-price-breakdown table { font-size: 13px !important; }
+    .gemini-price-breakdown td { padding: 8px 12px !important; }
+  }
+</style>
 ```
 
 ---
 
 ## 🛠️ Step 2: Render Widget in Product Template
 
-1. In the Shopify Theme Code Editor, open **`sections/main-product.liquid`** (or if your theme uses blocks, locate where price/buttons are rendered).
-2. Locate the buy buttons block:
+1. In Shopify Theme Editor, open **`sections/main-product.liquid`**.
+2. Find the buy buttons block:
    ```liquid
    {%- render 'buy-buttons', block: block, product: product -%}
    ```
-3. Immediately below it, paste this line:
+3. Right below it, add this single line:
    ```liquid
    {% render 'gemini-price-breakdown-enhanced', product: product %}
    ```
 4. Click **Save**.
-
----
-
-## ⚙️ How It Connects to Dagina Cloud Dashboard
-
-| Feature | Controlled By Metafield | Dagina Cloud UI Control |
-| :--- | :--- | :--- |
-| **Price Breakdown** | `custom.enable_breakdown` (boolean) | Click **Breakdown ON / OFF** badge in Dagina Cloud table or use **Bulk Edit**. |
-| **Make An Offer** | `custom.enable_offer` (boolean) | Click **Offer ON / OFF** badge in Dagina Cloud table or use **Bulk Edit**. |
-| **Live Rates & Calculations** | `gemini.price_breakdown` (JSON) | Automatically synced when gold rates change or you click **Push to Shopify**. |
-| **Wastage Display** | *Removed* | Completely omitted from the customer-facing storefront. |
-| **Invoice / Checkout** | Draft Orders API | Generates real-time Shopify draft orders with `taxes_included: true` to prevent double GST calculation. |
