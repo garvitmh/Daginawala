@@ -246,16 +246,31 @@ app.use(async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
+    let decoded;
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded; // Attach the decoded token payload
     } catch (err) {
         return res.status(401).json({ error: 'Unauthorized: Token expired or invalid' });
     }
 
+    const shopDomain = decoded.shop || SHOPIFY_STORE;
+    let shop = await prisma.shop.findUnique({
+        where: { domain: shopDomain },
+        include: { settings: true }
+    });
+
+    if (!shop) {
+        shop = await prisma.shop.findFirst({
+            include: { settings: true }
+        });
+    }
+
+    req.context = { shop };
+    req.shop = shop;
     res.locals.shopify = {
         session: {
-            shop: SHOPIFY_STORE,
+            shop: shop ? shop.domain : shopDomain,
         },
     };
     next();

@@ -542,8 +542,16 @@ router.put('/:id', async (req, res) => {
 // Calculate price for product (used by frontend modal)
 router.post('/calculate-price', async (req, res) => {
     try {
-        const shopDomain = res.locals.shopify.session.shop;
-        const shop = await prisma.shop.findUnique({ where: { domain: shopDomain } });
+        const shopDomain = req.context?.shop?.domain || res.locals?.shopify?.session?.shop || 'daginawala11.myshopify.com';
+        let shop = req.context?.shop;
+        if (!shop) {
+            shop = await prisma.shop.findUnique({
+                where: { domain: shopDomain },
+                include: { settings: true }
+            }) || await prisma.shop.findFirst({
+                include: { settings: true }
+            });
+        }
 
         if (!shop) {
             return res.status(404).json({ error: 'Shop not found' });
@@ -553,7 +561,7 @@ router.post('/calculate-price', async (req, res) => {
             weightGrams,
             grossGoldWeight,
             autoGrossGoldWeight,
-            metal,
+            metal = 'gold',
             karat,
             gemstones = [],
             makingChargeType,
@@ -580,66 +588,105 @@ router.post('/calculate-price', async (req, res) => {
             enamelDiscountValue
         } = req.body;
 
-        console.log('[CALCULATE-PRICE] Full Request Body:', JSON.stringify(req.body, null, 2));
+        const parsedWeight = parseFloat(weightGrams) || 0;
+        const parsedKarat = (karat !== undefined && karat !== null && karat !== '' && !isNaN(parseInt(karat))) ? parseInt(karat) : null;
+        const cleanMetal = (metal || 'gold').toLowerCase().trim();
 
         // Create a temporary product object for calculation
         const tempProduct = {
             id: 'temp',
             shopId: shop.id,
-            metal: metal?.toLowerCase(),
-            karat: parseInt(karat),
-            weightGrams: parseFloat(weightGrams),
+            metal: cleanMetal,
+            karat: parsedKarat,
+            weightGrams: parsedWeight,
             grossGoldWeight: grossGoldWeight ? parseFloat(grossGoldWeight) : null,
-            wastagePct: parseFloat(wastagePct),
-            gstPct: parseFloat(gstPct),
-            discount: parseFloat(discount),
-            discountType,
-            makingChargeType,
+            wastagePct: parseFloat(wastagePct) || 0,
+            gstPct: (gstPct !== undefined && gstPct !== null && gstPct !== '') ? parseFloat(gstPct) : 3,
+            discount: parseFloat(discount) || 0,
+            discountType: discountType || 'flat',
+            makingChargeType: makingChargeType || null,
             makingChargeValue: (makingChargeValue !== undefined && makingChargeValue !== null && makingChargeValue !== '') ? parseFloat(makingChargeValue) : null,
-            makingGroupId,
-            metalDiscountType,
+            makingGroupId: makingGroupId || null,
+            metalDiscountType: metalDiscountType || null,
             metalDiscountValue: metalDiscountValue ? parseFloat(metalDiscountValue) : null,
-            makingDiscountType,
+            makingDiscountType: makingDiscountType || null,
             makingDiscountValue: makingDiscountValue ? parseFloat(makingDiscountValue) : null,
-            gemstoneDiscountType,
+            gemstoneDiscountType: gemstoneDiscountType || null,
             gemstoneDiscountValue: gemstoneDiscountValue ? parseFloat(gemstoneDiscountValue) : null,
-            isManualGemstonePrice,
+            isManualGemstonePrice: isManualGemstonePrice || false,
             manualGemstoneWeight: manualGemstoneWeight ? parseFloat(manualGemstoneWeight) : null,
             manualGemstonePrice: manualGemstonePrice ? parseFloat(manualGemstonePrice) : null,
-            autoGrossGoldWeight,
-            stoneWeightCarat: parseFloat(stoneWeightCarat || 0),
-            stonePieces: parseInt(stonePieces || 0),
-            enamelColor,
+            autoGrossGoldWeight: autoGrossGoldWeight || false,
+            stoneWeightCarat: parseFloat(stoneWeightCarat || 0) || 0,
+            stonePieces: parseInt(stonePieces || 0) || 0,
+            enamelColor: enamelColor || null,
             enamelWeightGrams: enamelWeightGrams ? parseFloat(enamelWeightGrams) : null,
-            enamelDiscountType,
+            enamelDiscountType: enamelDiscountType || null,
             enamelDiscountValue: enamelDiscountValue ? parseFloat(enamelDiscountValue) : null,
-            gemstones: gemstones.map(g => ({
+            gemstones: Array.isArray(gemstones) ? gemstones.map(g => ({
                 ...g,
-                gemstoneWeight: parseFloat(g.gemstoneWeight || 0),
-                gemstonePieces: parseInt(g.gemstonePieces || 0),
+                gemstoneWeight: parseFloat(g.gemstoneWeight || 0) || 0,
+                gemstonePieces: parseInt(g.gemstonePieces || 0) || 0,
                 pricePerCarat: g.pricePerCarat ? parseFloat(g.pricePerCarat) : null,
                 pricePerPiece: g.pricePerPiece ? parseFloat(g.pricePerPiece) : null,
                 totalPrice: g.totalPrice ? parseFloat(g.totalPrice) : null
-            }))
+            })) : []
         };
 
-        // Get metal rate
-        const metalRate = await prisma.metalRate.findFirst({
-            where: {
-                shopId: shop.id,
-                metal: metal?.toLowerCase(),
-                karat: parseInt(karat)
+        // Fetch Making Group if provided
+        if (makingGroupId) {
+            const makingGroup = await prisma.makingGroup.findUnique({
+                where: { id: makingGroupId }
+            });
+            if (makingGroup) {
+                tempProduct.makingGroup = makingGroup;
             }
-        });
-
-        if (!metalRate) {
-            return res.status(400).json({ error: `Metal rate not found for ${metal} ${karat}K` });
         }
 
-        // Get shop settings
-        const settings = await prisma.shopSettings.findUnique({
-            where: { shopId: shop.id }
+        // Get metal rate
+        let metalRate = await prisma.metalRate.findFirst({
+            where: {
+                shopId: shop.id,
+                metal: cleanMetal,
+                karat: parsedKarat
+            },
+            orderBy: { updatedAt: 'desc' }
         });
+
+        if (!metalRate && parsedKarat) {
+            // Fallback: search by karat across gold
+            metalRate = await prisma.metalRate.findFirst({
+                where: {
+                    shopId: shop.id,
+                    karat: parsedKarat
+                },
+                orderBy: { updatedAt: 'desc' }
+            });
+        }
+
+        if (!metalRate) {
+            // Fallback: pick any metal rate for that metal
+            metalRate = await prisma.metalRate.findFirst({
+                where: {
+                    shopId: shop.id,
+                    metal: cleanMetal
+                },
+                orderBy: { updatedAt: 'desc' }
+            });
+        }
+
+        const ratePerGram = metalRate ? metalRate.ratePerGram : 0;
+
+        // Get shop settings
+        const settings = shop.settings || await prisma.shopSettings.findUnique({
+            where: { shopId: shop.id }
+        }) || {
+            defaultMakingChargeType: 'per_gram',
+            defaultMakingChargeValue: 1500,
+            defaultWastagePct: 0,
+            defaultGstPct: 3,
+            defaultDiscount: 0,
+        };
 
         // Get enamel rate if needed
         let enamelRate = null;
@@ -655,13 +702,11 @@ router.post('/calculate-price', async (req, res) => {
         // Calculate price using pricing service
         const result = await pricing_service_1.PricingService.calculateProductPrice(
             tempProduct,
-            metalRate.ratePerGram,
+            ratePerGram,
             null,
             settings,
             enamelRate
         );
-
-        console.log('[CALCULATE-PRICE] Result: ₹' + result.price);
 
         res.json({
             success: true,
