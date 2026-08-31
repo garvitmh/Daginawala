@@ -664,7 +664,8 @@
             document.getElementById('negSuccessState').style.display = 'block';
 
             const whatsAppBtn = document.getElementById('whatsAppRedirectBtn');
-            if (data.whatsappNotifications && data.notificationWhatsapp) {
+            const targetWaNumber = data.notificationWhatsapp || "{{ admin_whatsapp_number }}" || "919588977645";
+            if (targetWaNumber) {
               whatsAppBtn.style.display = 'flex';
               whatsAppBtn.onclick = function() {
                 let waText = `Hello AKD Team,\n\n` +
@@ -713,7 +714,7 @@
                   `Please review.\n\n` +
                   `Thank you.`;
 
-                const waUrl = `https://wa.me/${data.notificationWhatsapp}?text=${encodeURIComponent(waText)}`;
+                const waUrl = `https://wa.me/${targetWaNumber}?text=${encodeURIComponent(waText)}`;
                 window.open(waUrl, '_blank');
               };
             } else {

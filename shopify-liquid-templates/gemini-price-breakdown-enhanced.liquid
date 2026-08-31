@@ -672,7 +672,8 @@
 
             // Bind the WhatsApp Redirection Action
             const whatsAppBtn = document.getElementById('whatsAppRedirectBtn');
-            if (data.whatsappNotifications && data.notificationWhatsapp) {
+            const targetWaNumber = data.notificationWhatsapp || "{{ admin_whatsapp_number }}" || "919588977645";
+            if (targetWaNumber) {
               whatsAppBtn.style.display = 'flex';
               whatsAppBtn.onclick = function() {
                 let waText = `Hello AKD Team,\n\n` +
@@ -689,7 +690,6 @@
                   const makingRateVal = b.making_charge_type === 'percent' 
                     ? `${b.making_charge_rate}%`
                     : `₹${b.making_charge_rate}/g`;
-                  const wastageVal = (b.wastage_amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
                   const gstVal = (b.gst_amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
                   const gemstoneVal = (b.gemstone_price / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
                   const totalVal = (b.total / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
@@ -724,7 +724,7 @@
                   `Thank you.`;
 
                 // Open WhatsApp with dynamic redirect URL
-                const waUrl = `https://wa.me/${data.notificationWhatsapp}?text=${encodeURIComponent(waText)}`;
+                const waUrl = `https://wa.me/${targetWaNumber}?text=${encodeURIComponent(waText)}`;
                 window.open(waUrl, '_blank');
               };
             } else {
