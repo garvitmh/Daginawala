@@ -280,6 +280,13 @@ class PricingService {
             const rate = Math.round(makingChargeValue);
             makingChargeBubblesArray = [rate, Math.max(0, rate - 150), Math.max(0, rate - 300), Math.max(0, rate - 450)];
         }
+        // Making-charge negotiation happens via ₹/g bubbles, which only make sense for per-gram-style
+        // making. For percent/flat making, ₹/g bubbles are meaningless (e.g. a 15% rate would render as
+        // "₹15/g"), so disable making negotiation entirely for those products.
+        const makingNegotiable = (makingChargeType === 'per_gram' || makingChargeType === 'master');
+        if (!makingNegotiable) {
+            makingChargeBubblesArray = [];
+        }
 
         let stoneDiscountOptionsArray = ['0%', '2%', '5%', '7%', '10%', 'Custom'];
         if (settings && settings.stoneDiscountOptions) {
@@ -290,6 +297,7 @@ class PricingService {
             price: finalPrice,
             breakdown: {
                 making_charge_bubbles: makingChargeBubblesArray,
+                making_negotiable: makingNegotiable,
                 stone_discount_options: stoneDiscountOptionsArray,
                 metal: product.metal,
                 karat: product.karat,

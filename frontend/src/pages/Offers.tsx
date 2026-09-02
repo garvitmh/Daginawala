@@ -23,6 +23,10 @@ interface Product {
     title: string;
     sku: string;
     imageUrl?: string;
+    weightGrams?: number;
+    grossGoldWeight?: number;
+    karat?: number;
+    metal?: string;
 }
 
 interface Offer {
@@ -182,15 +186,96 @@ export default function Offers() {
         } else if (statusLower === 'counter_sent') {
             targetPrice = offer.counterAmount || parseFloat(counterPrice) || offer.offerAmount;
         }
-            
-        const text = `Hello ${offer.customerName}, regarding your offer ${offer.offerId} for ${offer.product.title}:\n\n` +
-            (statusLower === 'approved' 
-                ? `We have approved your offer of ${formatCurrency(targetPrice)}! You can checkout here:\n${checkoutLink}` 
-                : (statusLower === 'counter_sent' 
-                    ? `We would like to make a counter offer of ${formatCurrency(targetPrice)}.`
-                    : `We are currently reviewing your offer.`));
-        
-        const url = `https://wa.me/${offer.customerPhone.startsWith('+') ? offer.customerPhone : '+91' + offer.customerPhone}?text=${encodeURIComponent(text)}`;
+
+        const savings = (offer.originalTotal || 0) - targetPrice;
+        const weight = offer.product?.weightGrams || offer.product?.grossGoldWeight || 0;
+        const metalDesc = `${offer.product?.karat || 22}K ${offer.product?.metal ? offer.product.metal.toUpperCase() : 'GOLD'}`;
+        const makingRateNum = parseFloat(offer.makingOffer || offer.makingRate?.toString() || '0');
+        const calculatedMakingAmount = weight > 0 && makingRateNum > 0 ? weight * makingRateNum : 0;
+        // Derive GST from the price actually being shown (targetPrice is GST-inclusive),
+        // so the itemization reconciles even when the admin approves/counters a different amount.
+        const gstAmount = targetPrice * 0.03 / 1.03;
+
+        let text = `Hello *${offer.customerName}*,\n\n`;
+        text += `Regarding your offer *${offer.offerId}* for *${offer.product.title}* (SKU: ${offer.product.sku}):\n\n`;
+
+        if (statusLower === 'approved') {
+            text += `*Your Offer Has Been Approved!*\n\n`;
+            text += `*Itemized Price Breakdown:*\n`;
+            text += `━━━━━━━━━━━━━━━━━━━━\n`;
+            if (weight > 0) {
+                text += `• Weight & Purity: ${weight}g (${metalDesc})\n`;
+            }
+            if (offer.goldValue) {
+                text += `• Gold Value: ${formatCurrency(offer.goldValue)}` + (offer.goldRate ? ` (@ ${formatCurrency(offer.goldRate)}/g)` : '') + `\n`;
+            }
+            if (calculatedMakingAmount > 0) {
+                text += `• Making Charges: ${formatCurrency(calculatedMakingAmount)} (@ ₹${makingRateNum}/g)\n`;
+            } else if (makingRateNum > 0) {
+                text += `• Making Charges: @ ₹${makingRateNum}/g\n`;
+            }
+            if (offer.stoneValue && offer.stoneValue > 0) {
+                text += `• Gemstone: ${formatCurrency(offer.stoneValue)}` + (offer.stoneOffer && offer.stoneOffer !== '0%' ? ` (Disc: ${offer.stoneOffer})` : '') + `\n`;
+            }
+            text += `• GST (3%): ${formatCurrency(gstAmount)}\n`;
+            text += `━━━━━━━━━━━━━━━━━━━━\n`;
+            if (offer.originalTotal && offer.originalTotal > targetPrice) {
+                text += `• *Original Price:* ~${formatCurrency(offer.originalTotal)}~\n`;
+            }
+            text += `• *Final Approved Price:* *${formatCurrency(targetPrice)}*\n`;
+            if (savings > 0) {
+                text += `• *Total Customer Savings:* *${formatCurrency(savings)}*\n`;
+            }
+            text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+            if (checkoutLink) {
+                text += `*Complete your purchase securely here:*\n${checkoutLink}\n\n`;
+            }
+            text += `Thank you for choosing Dagina Jewellers!`;
+        } else if (statusLower === 'counter_sent') {
+            text += `*Special Counter Offer from Dagina:*\n\n`;
+            text += `*Offer Summary:*\n`;
+            text += `━━━━━━━━━━━━━━━━━━━━\n`;
+            if (weight > 0) {
+                text += `• Weight & Purity: ${weight}g (${metalDesc})\n`;
+            }
+            if (offer.originalTotal) {
+                text += `• Original Catalog Price: ~${formatCurrency(offer.originalTotal)}~\n`;
+            }
+            text += `• Your Offer: ${formatCurrency(offer.offerAmount)}\n`;
+            text += `• *Our Special Counter Price:* *${formatCurrency(targetPrice)}*\n`;
+            if (offer.originalTotal && offer.originalTotal > targetPrice) {
+                text += `• *Your Discount:* *${formatCurrency(offer.originalTotal - targetPrice)}*\n`;
+            }
+            text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+            if (checkoutLink) {
+                text += `*Complete your purchase securely here:*\n${checkoutLink}\n\n`;
+            } else {
+                text += `Please reply to confirm if you would like to proceed with this special deal.\n\n`;
+            }
+            text += `Thank you,\nDagina Jewellers`;
+        } else {
+            text += `*Submitted Offer Breakdown:*\n`;
+            text += `━━━━━━━━━━━━━━━━━━━━\n`;
+            if (weight > 0) {
+                text += `• Weight & Purity: ${weight}g (${metalDesc})\n`;
+            }
+            if (offer.originalTotal) {
+                text += `• Original Price: ${formatCurrency(offer.originalTotal)}\n`;
+            }
+            text += `• Your Proposed Offer: *${formatCurrency(targetPrice)}*\n`;
+            if (makingRateNum > 0) {
+                text += `• Proposed Making Rate: ₹${makingRateNum}/g\n`;
+            }
+            if (offer.stoneOffer && offer.stoneOffer !== '0%') {
+                text += `• Proposed Stone Discount: ${offer.stoneOffer}\n`;
+            }
+            text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+            text += `Our team is reviewing your offer and will update you shortly!`;
+        }
+
+        const phoneClean = offer.customerPhone.replace(/[^0-9]/g, '');
+        const phoneWithCountry = phoneClean.length === 10 ? `91${phoneClean}` : phoneClean;
+        const url = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');
     };
 
@@ -364,6 +449,12 @@ export default function Offers() {
                             <div>
                                 <Text variant="headingSm" as="h3">Negotiated Breakdown</Text>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                                    <Text variant="bodyMd" as="p">Net Weight & Purity:</Text>
+                                    <Text variant="bodyMd" as="p" fontWeight="bold">
+                                        {activeOffer.product?.weightGrams ? `${activeOffer.product.weightGrams}g` : '-'} 
+                                        {activeOffer.product?.karat ? ` (${activeOffer.product.karat}K ${activeOffer.product.metal ? activeOffer.product.metal.toUpperCase() : 'GOLD'})` : ''}
+                                    </Text>
+
                                     <Text variant="bodyMd" as="p">Gold Rate (per g):</Text>
                                     <Text variant="bodyMd" as="p" fontWeight="bold">{formatCurrency(activeOffer.goldRate)}</Text>
 
