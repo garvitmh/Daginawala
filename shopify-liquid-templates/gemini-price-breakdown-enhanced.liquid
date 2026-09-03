@@ -14,10 +14,10 @@
 {% assign breakdown = current_variant.metafields.gemini.price_breakdown.value | default: current_variant.metafields.gemini.price_breakdown %}
 
 {% comment %}
-  WhatsApp Configuration: Replace with your dedicated support number (with country code, no spaces or +).
-  Default fallback is 919588977645.
+  The support WhatsApp number and notification email are configured by the admin in Dagina Cloud
+  (Settings -> Notifications: notificationWhatsapp / notificationEmail). The offer flow uses those,
+  returned by the API as data.notificationWhatsapp — nothing is hardcoded here.
 {% endcomment %}
-{% assign admin_whatsapp_number = "919588977645" %}
 
 {% if breakdown %}
   {% assign gemstone_price_raw = breakdown.gemstone_price | default: 0 %}
@@ -106,7 +106,11 @@
                           ₹{{ bubble }}/g
                         </button>
                       {% endfor %}
+                      <button type="button" class="making-bubble-btn" data-rate="custom" onclick="window.selectMakingCustom(this)" style="padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 20px; background: #ffffff; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s;">
+                        Custom
+                      </button>
                     </div>
+                    <input type="number" id="customMakingInput" min="0" placeholder="Enter your making rate (₹/g)" oninput="window.handleMakingCustom()" style="display: none; width: 100%; margin-top: 8px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px;">
                     <input type="hidden" id="offerMakingInput" value="{{ breakdown.making_charge_bubbles[0] }}">
                   </div>
                   
@@ -392,10 +396,42 @@
       buttons.forEach(btn => btn.classList.remove('active'));
       buttonElement.classList.add('active');
 
+      // A fixed bubble hides the custom rate input.
+      const cmi = document.getElementById('customMakingInput');
+      if (cmi) cmi.style.display = 'none';
+
       // Update hidden input and trigger API recalculation
       selectedMakingRate = buttonElement.getAttribute('data-rate');
       document.getElementById('offerMakingInput').value = selectedMakingRate;
       triggerCalculate();
+    };
+
+    // Custom making rate: reveal an input so the customer can type their own ₹/g.
+    window.selectMakingCustom = function(buttonElement) {
+      const buttons = document.querySelectorAll('.making-bubble-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      buttonElement.classList.add('active');
+      const inp = document.getElementById('customMakingInput');
+      if (inp) {
+        inp.style.display = 'block';
+        inp.focus();
+        const v = parseFloat(inp.value);
+        if (!isNaN(v)) {
+          selectedMakingRate = String(v);
+          document.getElementById('offerMakingInput').value = selectedMakingRate;
+        }
+      }
+      triggerCalculate();
+    };
+
+    window.handleMakingCustom = function() {
+      const inp = document.getElementById('customMakingInput');
+      const v = parseFloat(inp && inp.value);
+      if (!isNaN(v)) {
+        selectedMakingRate = String(v);
+        document.getElementById('offerMakingInput').value = selectedMakingRate;
+        triggerCalculate();
+      }
     };
 
     // Render one discount control per stone from the live breakdown, so a customer can offer a
@@ -406,8 +442,10 @@
       const gems = breakdown && breakdown.gemstone_details && breakdown.gemstone_details.gemstones;
       if (!Array.isArray(gems) || gems.length === 0) { container.style.display = 'none'; return; }
       if (stoneControlsRendered) return;
-      const opts = (breakdown.stone_discount_options && breakdown.stone_discount_options.length)
-        ? breakdown.stone_discount_options : ['0%', '5%', '10%', 'Custom'];
+      let opts = (breakdown.stone_discount_options && breakdown.stone_discount_options.length)
+        ? breakdown.stone_discount_options.slice() : ['0%', '5%', '10%'];
+      // Always give the customer a Custom option, whatever the admin configured.
+      if (!opts.some(function(o){ return String(o).toLowerCase() === 'custom'; })) opts.push('Custom');
       container.innerHTML = gems.map(function(g, i) {
         var gid = g.id || ('idx' + i);
         stoneDiscounts[gid] = 0;
