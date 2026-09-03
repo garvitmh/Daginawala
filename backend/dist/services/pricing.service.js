@@ -161,6 +161,7 @@ class PricingService {
                 gemstoneCost += finalGemCost;
                 if (!firstGemName) firstGemName = (0, gemstoneDisplay_1.getGemstoneDisplayName)(gemstone.gemstoneType);
                 gemstonesArray.push({
+                    id: gemstone.id, // stable id so the storefront can make a per-stone offer
                     type: (0, gemstoneDisplay_1.getGemstoneDisplayName)(gemstone.gemstoneType),
                     cut: gemstone.gemstoneCut,
                     color: gemstone.gemstoneColor,
@@ -171,6 +172,8 @@ class PricingService {
                     cost: Math.round(gemCost * 100),
                     finalCost: Math.round(finalGemCost * 100),
                     hasDiscount: gemCost !== finalGemCost,
+                    discountType: gemDiscType || null,
+                    discountValue: gemDiscValue ?? null,
                     rateNotSet: rateNotSet,
                     isCustom: gemstone.isCustom || false,
                 });

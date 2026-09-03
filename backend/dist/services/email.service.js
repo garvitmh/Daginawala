@@ -36,41 +36,67 @@ const sendOfferAlert = async (offerDetails, shopSettings, breakdown) => {
         return false;
     }
 
-    const { customerName, customerPhone, offerAmount, productUrl, productTitle, pincode, city } = offerDetails;
+    const {
+        offerId, customerName, customerPhone, customerEmail, offerAmount, originalTotal,
+        productUrl, productTitle, sku, makingOffer, stoneOffer, status, pincode, city, message
+    } = offerDetails;
     const toEmail = shopSettings.notificationEmail;
 
+    const inr = (n) => `₹${(Number(n) / 100).toFixed(2)}`;         // breakdown fields are paise
+    const rupees = (n) => `₹${Number(n).toFixed(2)}`;              // offer totals are rupees
+
+    // Per-stone rows (multi-stone products show each stone + its negotiated discount)
+    let gemRows = '';
+    const gems = breakdown.gemstone_details && breakdown.gemstone_details.gemstones;
+    if (Array.isArray(gems) && gems.length > 0) {
+        gemRows = gems.map(g =>
+            `<tr><td>Stone — ${g.type || 'Gemstone'}${g.discountValue ? ` (${g.discountValue}% off)` : ''}</td><td>${inr(g.finalCost)}</td></tr>`
+        ).join('');
+    } else if (breakdown.gemstone_price > 0) {
+        gemRows = `<tr><td>Gemstone</td><td>${inr(breakdown.gemstone_price)}</td></tr>`;
+    }
+    const enamelRow = breakdown.enamel_price > 0 ? `<tr><td>Enamel</td><td>${inr(breakdown.enamel_price)}</td></tr>` : '';
+    const savings = (originalTotal != null && offerAmount != null) ? (originalTotal - offerAmount) : null;
+    const statusLabel = status ? status.replace('_', ' ') : 'pending';
+
     const htmlContent = `
-        <h2>New Offer Received!</h2>
-        <p>A customer has submitted a new offer for a product.</p>
-        
+        <h2>New Offer Received${offerId ? ` — ${offerId}` : ''}</h2>
+        <p>Status: <strong>${statusLabel}</strong></p>
+
         <h3>Customer Details</h3>
         <ul>
             <li><strong>Name:</strong> ${customerName}</li>
             <li><strong>Phone:</strong> ${customerPhone}</li>
+            <li><strong>Email:</strong> ${customerEmail || 'N/A'}</li>
             <li><strong>Pincode:</strong> ${pincode || 'N/A'}</li>
             <li><strong>City:</strong> ${city || 'N/A'}</li>
+            ${message ? `<li><strong>Message:</strong> ${message}</li>` : ''}
         </ul>
 
         <h3>Offer Details</h3>
         <ul>
-            <li><strong>Product:</strong> <a href="${productUrl}">${productTitle}</a></li>
-            <li><strong>Offer Amount:</strong> ₹${offerAmount}</li>
+            <li><strong>Product:</strong> <a href="${productUrl}">${productTitle}</a>${sku ? ` (SKU: ${sku})` : ''}</li>
+            ${originalTotal != null ? `<li><strong>Website Price:</strong> ${rupees(originalTotal)}</li>` : ''}
+            <li><strong>Offer Amount:</strong> ${rupees(offerAmount)}</li>
+            ${savings != null && savings > 0 ? `<li><strong>Customer wants a discount of:</strong> ${rupees(savings)}</li>` : ''}
+            ${makingOffer ? `<li><strong>Making offered:</strong> ₹${makingOffer}/g</li>` : ''}
+            ${stoneOffer && stoneOffer !== '0%' ? `<li><strong>Stone discount offered:</strong> ${stoneOffer}</li>` : ''}
         </ul>
 
         <h3>Simulated Breakdown (if accepted)</h3>
-        <p>To match this offer, the new pricing breakdown would be:</p>
         <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
             <tbody>
-                <tr><td>Metal Value</td><td>₹${(breakdown.metal_value / 100).toFixed(2)}</td></tr>
-                <tr><td>Making Charges</td><td>₹${(breakdown.making_charges / 100).toFixed(2)}</td></tr>
-                <tr><td>Gemstone Cost</td><td>₹${(breakdown.gemstone_price / 100).toFixed(2)}</td></tr>
-                <tr><td>Subtotal</td><td>₹${(breakdown.subtotal / 100).toFixed(2)}</td></tr>
-                <tr><td>GST (${breakdown.gst_pct}%)</td><td>₹${(breakdown.gst_amount / 100).toFixed(2)}</td></tr>
-                <tr><td><strong>Total</strong></td><td><strong>₹${(breakdown.total / 100).toFixed(2)}</strong></td></tr>
+                <tr><td>Metal Value</td><td>${inr(breakdown.metal_value)}</td></tr>
+                <tr><td>Making Charges</td><td>${inr(breakdown.making_charges)}</td></tr>
+                ${gemRows}
+                ${enamelRow}
+                <tr><td>Subtotal</td><td>${inr(breakdown.subtotal)}</td></tr>
+                <tr><td>GST (${breakdown.gst_pct}%)</td><td>${inr(breakdown.gst_amount)}</td></tr>
+                <tr><td><strong>Total</strong></td><td><strong>${inr(breakdown.total)}</strong></td></tr>
             </tbody>
         </table>
         <br />
-        <p>Please contact the customer at <strong>${customerPhone}</strong> to negotiate or accept this offer.</p>
+        <p>Contact the customer at <strong>${customerPhone}</strong>${customerEmail ? ` / ${customerEmail}` : ''} to negotiate or accept this offer.</p>
     `;
 
     try {
@@ -78,7 +104,7 @@ const sendOfferAlert = async (offerDetails, shopSettings, breakdown) => {
         const info = await transporter.sendMail({
             from: `"Daginawala Automated Alerts" <${process.env.SMTP_USER}>`,
             to: toEmail,
-            subject: `New Offer: ₹${offerAmount} from ${customerName}`,
+            subject: `New Offer${offerId ? ` ${offerId}` : ''}: ₹${offerAmount} from ${customerName}`,
             html: htmlContent,
         });
         

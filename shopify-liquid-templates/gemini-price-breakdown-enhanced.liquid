@@ -116,17 +116,9 @@
                     <label style="display: block; font-size: 12px; font-weight: bold; color: #374151; margin-bottom: 8px;">
                       Stone Value Discount
                     </label>
-                    <select id="stoneDiscountSelect" onchange="window.handleStoneDiscountChange(this)" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background-color: white; font-weight: 500; outline: none;">
-                      {% for opt in breakdown.stone_discount_options %}
-                        <option value="{{ opt }}">{{ opt }}</option>
-                      {% endfor %}
-                    </select>
-                    
-                    <!-- Custom Discount Text Field -->
-                    <div id="customStoneDiscountWrapper" style="display: none; margin-top: 10px;">
-                      <label style="display: block; font-size: 11px; color: #4b5563; margin-bottom: 4px;">Enter custom stone discount (%)</label>
-                      <input type="number" id="customStoneDiscountInput" min="0" max="100" placeholder="e.g. 15" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-                    </div>
+                    <!-- One discount control per stone, rendered from the live calculation so a
+                         customer can offer a different discount on each stone. -->
+                    <div id="perStoneControls"><div style="font-size:12px;color:#9ca3af;">Loading stones…</div></div>
                   </div>
                   {% endif %}
                 </div>
@@ -150,8 +142,8 @@
                   </div>
 
                   <div style="margin-bottom: 12px;">
-                    <label for="negEmail" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">Email Address (Optional)</label>
-                    <input type="email" id="negEmail" placeholder="e.g. rahul@example.com" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;">
+                    <label for="negEmail" style="display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 500;">Email Address *</label>
+                    <input type="email" id="negEmail" required placeholder="e.g. rahul@example.com" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;">
                     <div class="field-error" id="error_negEmail" style="display: none; color: #ef4444; font-size: 11px; margin-top: 4px; font-weight: 500;">Please enter a valid email address.</div>
                   </div>
 
@@ -390,7 +382,8 @@
     const PRODUCT_SKU = "{{ current_variant.sku | default: product.selected_or_first_available_variant.sku | default: product.variants[0].sku | default: 'N/A' }}";
 
     let selectedMakingRate = "{{ breakdown.making_charge_bubbles[0] | default: breakdown.making_charge_rate }}";
-    let selectedStoneDiscount = "0%";
+    let stoneDiscounts = {};          // gemId -> percent discount (per stone)
+    let stoneControlsRendered = false;
     let lastCalculatedBreakdown = null;
 
     window.selectMakingBubble = function(buttonElement) {
@@ -405,35 +398,60 @@
       triggerCalculate();
     };
 
-    window.handleStoneDiscountChange = function(selectElement) {
-      const customWrapper = document.getElementById('customStoneDiscountWrapper');
-      if (selectElement.value.toLowerCase() === 'custom') {
-        customWrapper.style.display = 'block';
-        selectedStoneDiscount = '0%'; // default to 0 until they type
+    // Render one discount control per stone from the live breakdown, so a customer can offer a
+    // different discount on each stone of a multi-stone product.
+    function renderStoneControls(breakdown) {
+      const container = document.getElementById('perStoneControls');
+      if (!container) return;
+      const gems = breakdown && breakdown.gemstone_details && breakdown.gemstone_details.gemstones;
+      if (!Array.isArray(gems) || gems.length === 0) { container.style.display = 'none'; return; }
+      if (stoneControlsRendered) return;
+      const opts = (breakdown.stone_discount_options && breakdown.stone_discount_options.length)
+        ? breakdown.stone_discount_options : ['0%', '5%', '10%', 'Custom'];
+      container.innerHTML = gems.map(function(g, i) {
+        var gid = g.id || ('idx' + i);
+        stoneDiscounts[gid] = 0;
+        var optionsHtml = opts.map(function(o){ return '<option value="' + o + '">' + o + '</option>'; }).join('');
+        var label = (g.type || 'Stone') + (g.weight ? ' (' + g.weight + ' ct)' : '');
+        return '<div style="margin-bottom:10px;">'
+          + '<div style="font-size:12px;color:#4b5563;margin-bottom:4px;font-weight:500;">' + label + '</div>'
+          + '<select data-gemid="' + gid + '" onchange="window.handleStoneSelect(this)" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;background:#fff;">' + optionsHtml + '</select>'
+          + '<input type="number" min="0" max="100" placeholder="custom %" data-gemid-custom="' + gid + '" oninput="window.handleStoneCustom(this)" style="display:none;width:100%;margin-top:6px;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">'
+          + '</div>';
+      }).join('');
+      stoneControlsRendered = true;
+    }
+
+    window.handleStoneSelect = function(sel) {
+      var gid = sel.getAttribute('data-gemid');
+      var custom = document.querySelector('[data-gemid-custom="' + gid + '"]');
+      if (String(sel.value).toLowerCase() === 'custom') {
+        if (custom) custom.style.display = 'block';
+        stoneDiscounts[gid] = parseFloat(custom && custom.value) || 0;
       } else {
-        customWrapper.style.display = 'none';
-        selectedStoneDiscount = selectElement.value;
-        triggerCalculate();
+        if (custom) custom.style.display = 'none';
+        stoneDiscounts[gid] = parseFloat(String(sel.value).replace('%', '')) || 0;
       }
+      triggerCalculate();
     };
 
-    // Listen to custom input changes
-    const customStoneInput = document.getElementById('customStoneDiscountInput');
-    if (customStoneInput) {
-      customStoneInput.addEventListener('input', function() {
-        const val = parseFloat(this.value) || 0;
-        selectedStoneDiscount = val + '%';
-        triggerCalculate();
-      });
+    window.handleStoneCustom = function(inp) {
+      var gid = inp.getAttribute('data-gemid-custom');
+      stoneDiscounts[gid] = parseFloat(inp.value) || 0;
+      triggerCalculate();
+    };
+
+    function stoneDiscountsArray() {
+      return Object.keys(stoneDiscounts).map(function(id){ return { id: id, value: stoneDiscounts[id] }; });
+    }
+    function allStonesZero() {
+      return Object.keys(stoneDiscounts).every(function(id){ return !stoneDiscounts[id]; });
     }
 
     function triggerCalculate() {
       // Show loading status in offered total
       const displayTotal = document.getElementById('offeredTotalDisplay');
       displayTotal.style.opacity = '0.5';
-
-      // Parse discount rate
-      const cleanStoneDiscount = parseFloat(selectedStoneDiscount.replace('%', '')) || 0;
 
       fetch('https://dagina.cloud/api/public/offers/calculate', {
         method: 'POST',
@@ -444,7 +462,7 @@
           shopDomain: Shopify.shop,
           shopifyVariantId: CURRENT_VARIANT_ID,
           proposedMakingRate: parseFloat(selectedMakingRate),
-          proposedStoneDiscount: cleanStoneDiscount
+          stoneDiscounts: stoneDiscountsArray()
         })
       })
       .then(response => response.json())
@@ -452,13 +470,14 @@
         displayTotal.style.opacity = '1';
         if (data.success && data.breakdown) {
           lastCalculatedBreakdown = data.breakdown;
+          renderStoneControls(data.breakdown);
           const offeredTotal = data.breakdown.total / 100;
           displayTotal.innerText = '₹' + offeredTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
           // When this result reflects the un-negotiated baseline (current making rate, no stone
           // discount), treat its live total as the authoritative Website Price. Keeps the strikethrough
           // and "You save" correct even if the pushed price metafield is stale after a rate change.
-          if (parseFloat(selectedMakingRate) === CURRENT_MAKING_RATE && cleanStoneDiscount === 0) {
+          if (parseFloat(selectedMakingRate) === CURRENT_MAKING_RATE && allStonesZero()) {
             BASE_PRICE = offeredTotal;
             const wp = document.getElementById('websitePriceDisplay');
             if (wp) wp.innerText = '₹' + offeredTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -517,7 +536,11 @@
       // Reset inputs & errors
       document.getElementById('offerNegotiationForm').reset();
       document.getElementById('negErrorMsg').style.display = 'none';
-      document.getElementById('customStoneDiscountWrapper').style.display = 'none';
+      // Reset per-stone offer state; controls re-render on next calculation.
+      stoneDiscounts = {};
+      stoneControlsRendered = false;
+      const psc = document.getElementById('perStoneControls');
+      if (psc) { psc.style.display = ''; psc.innerHTML = '<div style="font-size:12px;color:#9ca3af;">Loading stones…</div>'; }
       
       // Hide all inline error helpers
       const errors = document.querySelectorAll('.field-error');
@@ -556,7 +579,7 @@
         return /^[0-9]{10}$/.test(val.trim());
       },
       negEmail: val => {
-        if (!val.trim()) return true; // Optional field
+        // Required: needed to send the invoice / counter-offer to the customer.
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
       },
       negPincode: val => {
@@ -647,8 +670,6 @@
         const pincode = document.getElementById('negPincode').value.trim();
         const city = document.getElementById('negCity').value.trim();
         const message = document.getElementById('negMessage').value.trim();
-        
-        const cleanStoneDiscount = parseFloat(selectedStoneDiscount.replace('%', '')) || 0;
 
         const submitBtn = document.getElementById('negSubmitBtn');
         submitBtn.innerText = 'SENDING...';
@@ -659,9 +680,9 @@
           shopifyVariantId: CURRENT_VARIANT_ID,
           customerName: name,
           customerPhone: phone,
-          customerEmail: email || null,
+          customerEmail: email,
           proposedMakingRate: parseFloat(selectedMakingRate),
-          proposedStoneDiscount: cleanStoneDiscount,
+          stoneDiscounts: stoneDiscountsArray(),
           message: message || null,
           pincode: pincode,
           city: city
@@ -726,29 +747,38 @@
                     (b.gemstone_price > 0 ? `• Gemstones: ₹${gemstoneVal}\n` : '') +
                     (b.enamel_price > 0 ? `• Enamel: ₹${(b.enamel_price / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n` : '');
 
-                  // Add gemstone details if present
+                  // Per-stone detail (shows each stone's cost and the discount offered on it)
                   if (b.gemstone_details && b.gemstone_details.gemstones && b.gemstone_details.gemstones.length > 0) {
                     b.gemstone_details.gemstones.forEach(gem => {
                       const gemCost = (gem.finalCost / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-                      waText += `  └ ${gem.type} (${gem.gemstonePieces || 0} pcs, ${gem.gemstoneWeight || 0} ct): ₹${gemCost}\n`;
+                      const disc = gem.discountValue ? ` (${gem.discountValue}% off)` : '';
+                      waText += `  └ ${gem.type} (${gem.pieces || 0} pcs, ${gem.weight || 0} ct)${disc}: ₹${gemCost}\n`;
                     });
                   }
 
+                  const origNum = (data.originalTotal != null ? data.originalTotal : BASE_PRICE);
+                  const origVal = origNum.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const saveNum = origNum - (b.total / 100);
+                  const saveVal = (saveNum > 0 ? saveNum : 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
                   waText += `• GST (${b.gst_pct}%): ₹${gstVal}\n` +
                     `━━━━━━━━━━━━━━━━━━━━\n` +
-                    `• *Proposed Total Offer:* *₹${totalVal}*\n\n`;
+                    `• Website Price: ₹${origVal}\n` +
+                    `• *Proposed Total Offer:* *₹${totalVal}*\n` +
+                    `• You Save: ₹${saveVal}\n\n`;
                 } else {
                   waText += `Current Price: ₹${BASE_PRICE.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n` +
                     `My Offer:\n` +
                     `Making: ₹${selectedMakingRate}/g\n` +
-                    `Stone: ${selectedStoneDiscount}\n` +
                     `Estimated Total: ₹${data.offerAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n`;
                 }
 
                 waText += `Customer: ${name}\n` +
-                  `Phone: ${phone}\n\n` +
-                  `Please review.\n\n` +
-                  `Thank you.`;
+                  `Phone: ${phone}\n` +
+                  `Email: ${email}\n` +
+                  ((city || pincode) ? `Location: ${[city, pincode].filter(Boolean).join(', ')}\n` : '') +
+                  ((data.stoneOffer && data.stoneOffer !== '0%') ? `Stone Discount Offered: ${data.stoneOffer}\n` : '') +
+                  (message ? `Message: ${message}\n` : '') +
+                  `\nPlease review.\n\nThank you.`;
 
                 // Open WhatsApp with dynamic redirect URL
                 const waUrl = `https://wa.me/${data.notificationWhatsapp}?text=${encodeURIComponent(waText)}`;

@@ -17,7 +17,7 @@ function rejectPublic(req, res, next) {
 }
 
 // Helper to simulate pricing breakdown
-async function calculateSimulatedBreakdown(product, shop, proposedMakingRate, proposedStoneDiscount) {
+async function calculateSimulatedBreakdown(product, shop, proposedMakingRate, proposedStoneDiscount, stoneDiscounts) {
     const settings = shop.settings || {};
     
     // Find rate per gram
@@ -42,18 +42,37 @@ async function calculateSimulatedBreakdown(product, shop, proposedMakingRate, pr
         clonedProduct.makingChargeValue = proposedMaking;
     }
 
-    // Override gemstone discounts if provided
-    const proposedStoneDiscountNum = parseFloat(proposedStoneDiscount);
-    if (proposedStoneDiscount !== undefined && proposedStoneDiscount !== null && proposedStoneDiscount !== '' && !isNaN(proposedStoneDiscountNum)) {
-        const discountPct = proposedStoneDiscountNum;
-        clonedProduct.gemstoneDiscountType = 'percent';
-        clonedProduct.gemstoneDiscountValue = discountPct;
-        
-        if (clonedProduct.gemstones && clonedProduct.gemstones.length > 0) {
-            clonedProduct.gemstones.forEach(gem => {
+    // Override gemstone discounts.
+    // Preferred: per-stone map `stoneDiscounts` = [{ id, value(pct) }] so a customer can offer a
+    // different discount on each stone of a multi-stone product. Falls back to the single
+    // `proposedStoneDiscount` applied to every stone (legacy / single-stone / older storefront).
+    const perStoneMap = {};
+    if (Array.isArray(stoneDiscounts)) {
+        for (const s of stoneDiscounts) {
+            const v = parseFloat(s && s.value);
+            if (s && s.id != null && !isNaN(v)) perStoneMap[String(s.id)] = v;
+        }
+    }
+    if (Object.keys(perStoneMap).length > 0 && clonedProduct.gemstones && clonedProduct.gemstones.length > 0) {
+        clonedProduct.gemstones.forEach(gem => {
+            const v = perStoneMap[String(gem.id)];
+            if (v !== undefined) {
                 gem.discountType = 'percent';
-                gem.discountValue = discountPct;
-            });
+                gem.discountValue = v;
+            }
+        });
+    } else {
+        const proposedStoneDiscountNum = parseFloat(proposedStoneDiscount);
+        if (proposedStoneDiscount !== undefined && proposedStoneDiscount !== null && proposedStoneDiscount !== '' && !isNaN(proposedStoneDiscountNum)) {
+            const discountPct = proposedStoneDiscountNum;
+            clonedProduct.gemstoneDiscountType = 'percent';
+            clonedProduct.gemstoneDiscountValue = discountPct;
+            if (clonedProduct.gemstones && clonedProduct.gemstones.length > 0) {
+                clonedProduct.gemstones.forEach(gem => {
+                    gem.discountType = 'percent';
+                    gem.discountValue = discountPct;
+                });
+            }
         }
     }
     
@@ -88,10 +107,11 @@ router.post('/calculate', async (req, res) => {
             shopifyVariantId, 
             productId,
             variantId,
-            proposedMakingRate, 
+            proposedMakingRate,
             proposedStoneDiscount,
             offeredMakingCharge,
-            stoneDiscountPct
+            stoneDiscountPct,
+            stoneDiscounts
         } = req.body;
 
         const finalVariantId = shopifyVariantId || variantId;
@@ -137,7 +157,7 @@ router.post('/calculate', async (req, res) => {
             return res.status(404).json({ error: 'Product not found' });
         }
         
-        const breakdown = await calculateSimulatedBreakdown(product, shop, finalMakingRate, finalStoneDiscount);
+        const breakdown = await calculateSimulatedBreakdown(product, shop, finalMakingRate, finalStoneDiscount, stoneDiscounts);
         return res.json({ success: true, breakdown });
     } catch (err) {
         console.error('Error calculating simulated breakdown:', err);
@@ -157,6 +177,7 @@ router.post('/', async (req, res) => {
             customerEmail,
             proposedMakingRate,
             proposedStoneDiscount,
+            stoneDiscounts,
             message,
             pincode,
             city
@@ -165,9 +186,14 @@ router.post('/', async (req, res) => {
         if (!shopDomain || !customerName || !customerPhone) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
-        
+
         if (!/^\d{10}$/.test(customerPhone)) {
             return res.status(400).json({ error: 'Invalid phone number format. Must be 10 digits.' });
+        }
+
+        // Email is required so the customer can be sent the invoice/counter-offer.
+        if (!customerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+            return res.status(400).json({ error: 'A valid email address is required.' });
         }
 
         // Find shop
@@ -223,9 +249,19 @@ router.post('/', async (req, res) => {
         const originalBreakdown = await calculateSimulatedBreakdown(product, shop, null, null);
         const originalTotal = originalBreakdown.total / 100;
 
-        // Calculate simulated offer price breakdown
-        const simulatedBreakdown = await calculateSimulatedBreakdown(product, shop, proposedMakingRate, proposedStoneDiscount);
+        // Calculate simulated offer price breakdown (per-stone discounts supported)
+        const simulatedBreakdown = await calculateSimulatedBreakdown(product, shop, proposedMakingRate, proposedStoneDiscount, stoneDiscounts);
         const offerAmount = simulatedBreakdown.total / 100;
+
+        // Build a human-readable per-stone offer summary, e.g. "Ruby: 10%, Emerald: 5%".
+        // Falls back to the single discount / "0%" for single-stone or legacy submissions.
+        let stoneOfferStr = '0%';
+        const simGems = simulatedBreakdown.gemstone_details && simulatedBreakdown.gemstone_details.gemstones;
+        if (Array.isArray(simGems) && simGems.length > 0) {
+            stoneOfferStr = simGems.map(g => `${g.type || 'Gemstone'}: ${g.discountValue ?? 0}%`).join(', ');
+        } else if (proposedStoneDiscount) {
+            stoneOfferStr = `${proposedStoneDiscount}%`;
+        }
 
         // 2. Minimum Offer Validation (Absolute Threshold)
         if (product.minOfferAmount && offerAmount < product.minOfferAmount) {
@@ -292,7 +328,7 @@ router.post('/', async (req, res) => {
                 goldRate: ratePerGram,
                 goldValue: simulatedBreakdown.metal_value / 100,
                 stoneValue: simulatedBreakdown.gemstone_price / 100,
-                stoneOffer: proposedStoneDiscount ? `${proposedStoneDiscount}%` : '0%',
+                stoneOffer: stoneOfferStr,
                 makingRate: originalBreakdown.making_charge_rate,
                 makingOffer: proposedMakingRate ? proposedMakingRate.toString() : originalBreakdown.making_charge_rate?.toString() || '0',
                 gst: simulatedBreakdown.gst_amount / 100,
@@ -307,9 +343,15 @@ router.post('/', async (req, res) => {
             }
         });
 
-        // Send Email Alert
+        // Send Email Alert (full offer detail so the shop sees exactly what was offered)
         await sendOfferAlert(
-            { customerName, customerPhone, offerAmount, productUrl: `/products/${product.shopifyProductId}`, productTitle: product.title, pincode, city },
+            {
+                offerId, customerName, customerPhone, customerEmail,
+                offerAmount, originalTotal,
+                productUrl: `/products/${product.shopifyProductId}`, productTitle: product.title,
+                sku: product.sku, makingOffer: proposedMakingRate ? proposedMakingRate.toString() : null,
+                stoneOffer: stoneOfferStr, status, pincode, city, message
+            },
             settings,
             simulatedBreakdown
         ).catch(err => console.error('Error sending offer alert email:', err));
@@ -319,10 +361,16 @@ router.post('/', async (req, res) => {
             status,
             offerId,
             offerAmount,
+            originalTotal,
+            customerName,
+            customerEmail: customerEmail || '',
+            stoneOffer: stoneOfferStr,
+            pincode: pincode || '',
+            city: city || '',
             whatsappNotifications: settings.whatsappNotifications || false,
             notificationWhatsapp: settings.notificationWhatsapp || '',
-            message: status === 'approved' 
-                ? 'Offer auto-approved!' 
+            message: status === 'approved'
+                ? 'Offer auto-approved!'
                 : (status === 'rejected' ? 'Offer auto-rejected.' : 'Offer submitted successfully.'),
             invoiceUrl // returns checkout link if approved
         });
