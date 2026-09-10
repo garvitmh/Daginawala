@@ -14,6 +14,12 @@ class ShopifyService {
         this.domain = domain;
         this.accessToken = accessToken;
     }
+    static getHeaders(token) {
+        return {
+            'X-Shopify-Access-Token': token,
+            'Content-Type': 'application/json'
+        };
+    }
     // Restore forShop method for BulkPriceUpdateService
     static async forShop(domain) {
         // Fetch the shop and access token from database
@@ -312,9 +318,29 @@ class ShopifyService {
                         if (product.shopifyProductId) {
                             mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "enable_offer", value: product.enableOffer ? "true" : "false", type: "boolean" });
                             mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "enable_breakdown", value: product.enableBreakdown !== false ? "true" : "false", type: "boolean" });
+                            mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "enable_making_offer", value: product.enableMakingOffer !== false ? "true" : "false", type: "boolean" });
+
+                            // Filterable PRODUCT metafields for shop/collection page filters
+                            // (Shopify storefront filters read product metafields, not variant metafields).
+                            const _gold = (breakdown && breakdown.net_weight != null) ? breakdown.net_weight
+                                : (product.weightGrams != null ? product.weightGrams : null);
+                            const _gems = (breakdown && breakdown.gemstone_details && Array.isArray(breakdown.gemstone_details.gemstones))
+                                ? breakdown.gemstone_details.gemstones : [];
+                            const _stoneWt = _gems.reduce((s, g) => s + (parseFloat(g.weight) || 0), 0);
+                            const _gemTypes = [...new Set(_gems.map(g => g.type).filter(Boolean))];
+                            if (_gold != null) {
+                                mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "gold_weight", value: String(_gold), type: "number_decimal" });
+                            }
+                            if (_stoneWt > 0) {
+                                mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "stone_weight", value: String(Math.round(_stoneWt * 1000) / 1000), type: "number_decimal" });
+                            }
+                            if (_gemTypes.length > 0) {
+                                mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "gemstone_type", value: JSON.stringify(_gemTypes), type: "list.single_line_text_field" });
+                            }
                         } else {
                             mfs.push({ ownerId: gid, namespace: "custom", key: "enable_offer", value: product.enableOffer ? "true" : "false", type: "boolean" });
                             mfs.push({ ownerId: gid, namespace: "custom", key: "enable_breakdown", value: product.enableBreakdown !== false ? "true" : "false", type: "boolean" });
+                            mfs.push({ ownerId: gid, namespace: "custom", key: "enable_making_offer", value: product.enableMakingOffer !== false ? "true" : "false", type: "boolean" });
                         }
                     }
 
@@ -740,19 +766,48 @@ class ShopifyService {
 
     async createDraftOrder(variantId, quantity, customPrice, customerDetails) {
         try {
-            const numericVariantId = variantId.startsWith('gid://') 
-                ? variantId.split('ProductVariant/').pop() 
-                : variantId;
+            const numericVariantId = variantId.toString().startsWith('gid://') 
+                ? variantId.toString().split('ProductVariant/').pop() 
+                : variantId.toString();
             
+            const targetPriceNum = parseFloat(customPrice);
+            
+            // 1. Fetch current variant to get catalog price
+            let catalogPrice = targetPriceNum;
+            try {
+                const varRes = await axios_1.default.get(
+                    `https://${this.domain}/admin/api/2024-01/variants/${numericVariantId}.json`,
+                    { headers: ShopifyService.getHeaders(this.accessToken) }
+                );
+                if (varRes.data?.variant?.price) {
+                    catalogPrice = parseFloat(varRes.data.variant.price) || targetPriceNum;
+                }
+            } catch (vErr) {
+                console.warn('[SHOPIFY] Could not fetch variant details, using customPrice as base:', vErr.message);
+            }
+
+            const lineItem = {
+                variant_id: parseInt(numericVariantId),
+                quantity: quantity || 1
+            };
+
+            // In Shopify Draft Orders, passing variant_id defaults to catalog price.
+            // If target price is less than catalog price, apply a fixed amount discount.
+            if (catalogPrice > targetPriceNum) {
+                const discountAmount = (catalogPrice - targetPriceNum).toFixed(2);
+                lineItem.applied_discount = {
+                    title: "Special Offer Discount",
+                    value: discountAmount,
+                    value_type: "fixed_amount",
+                    amount: discountAmount
+                };
+            } else if (targetPriceNum > catalogPrice) {
+                lineItem.price = targetPriceNum.toFixed(2);
+            }
+
             const payload = {
                 draft_order: {
-                    line_items: [
-                        {
-                            variant_id: parseInt(numericVariantId),
-                            quantity: quantity || 1,
-                            price: parseFloat(customPrice).toFixed(2)
-                        }
-                    ],
+                    line_items: [lineItem],
                     use_customer_default_address: true,
                     taxes_included: true
                 }
@@ -774,10 +829,12 @@ class ShopifyService {
             );
             
             if (response.data?.draft_order) {
+                console.log(`[SHOPIFY] ✓ Draft order created #${response.data.draft_order.id} | Total: ₹${response.data.draft_order.total_price}`);
                 return {
                     success: true,
                     draftOrderId: response.data.draft_order.id.toString(),
-                    invoiceUrl: response.data.draft_order.invoice_url
+                    invoiceUrl: response.data.draft_order.invoice_url,
+                    totalPrice: response.data.draft_order.total_price
                 };
             } else {
                 throw new Error('Draft order was not returned by Shopify');
