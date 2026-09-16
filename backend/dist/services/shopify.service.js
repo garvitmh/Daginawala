@@ -227,7 +227,7 @@ class ShopifyService {
                 // Fetch product with jewelry fields to sync metafields
                 let product = null;
                 try {
-                    product = await prisma.product.findUnique({ where: { shopifyVariantId: variantId } });
+                    product = await prisma.product.findUnique({ where: { shopifyVariantId: variantId }, include: { makingGroup: true } });
                 } catch (dbErr) {
                     console.error('[SHOPIFY] Error fetching product for metafields sync:', dbErr.message);
                 }
@@ -336,6 +336,21 @@ class ShopifyService {
                             }
                             if (_gemTypes.length > 0) {
                                 mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "gemstone_type", value: JSON.stringify(_gemTypes), type: "list.single_line_text_field" });
+                            }
+                            // Metal purity (karat)
+                            if (product.karat != null) {
+                                mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "metal_karat", value: String(product.karat), type: "number_integer" });
+                            }
+                            // Enamel colour + weight (only for products that have enamel)
+                            if (product.enamelColor && product.enamelColor.trim()) {
+                                mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "enamel_color", value: product.enamelColor.trim(), type: "single_line_text_field" });
+                            }
+                            if (product.enamelWeightGrams != null && product.enamelWeightGrams > 0) {
+                                mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "enamel_weight", value: String(product.enamelWeightGrams), type: "number_decimal" });
+                            }
+                            // Making group name (used by the offer flow when a product's making charge falls back to the group)
+                            if (product.makingGroup && product.makingGroup.name) {
+                                mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "making_group", value: product.makingGroup.name, type: "single_line_text_field" });
                             }
                         } else {
                             mfs.push({ ownerId: gid, namespace: "custom", key: "enable_offer", value: product.enableOffer ? "true" : "false", type: "boolean" });
