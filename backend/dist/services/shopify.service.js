@@ -956,7 +956,20 @@ class ShopifyService {
                 const prod = await prisma.product.findFirst({
                     where: { shopId, OR: [{ shopifyProductId: gid }, { shopifyProductId: numeric }] }
                 });
-                if (prod) { await prisma.product.update({ where: { id: prod.id }, data }); updated++; }
+                if (!prod) continue;
+                // Only write (and count) fields whose value actually differs from the plugin.
+                const changed = {};
+                for (const [field, val] of Object.entries(data)) {
+                    const cur = prod[field];
+                    const same = (typeof val === 'number')
+                        ? (cur != null && Math.abs(val - cur) < 1e-9)
+                        : String(cur ?? '') === String(val);
+                    if (!same) changed[field] = val;
+                }
+                if (Object.keys(changed).length > 0) {
+                    await prisma.product.update({ where: { id: prod.id }, data: changed });
+                    updated++;
+                }
             }
             cursor = conn.pageInfo?.hasNextPage ? conn.pageInfo.endCursor : null;
         } while (cursor);
