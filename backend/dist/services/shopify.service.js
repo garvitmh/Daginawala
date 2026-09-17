@@ -341,6 +341,10 @@ class ShopifyService {
                             if (product.karat != null) {
                                 mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "metal_karat", value: String(product.karat), type: "number_integer" });
                             }
+                            // Metal colour (yellow / white / rose etc.)
+                            if (product.metalColor && String(product.metalColor).trim()) {
+                                mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "metal_color", value: String(product.metalColor).trim(), type: "single_line_text_field" });
+                            }
                             // Enamel colour + weight (only for products that have enamel)
                             if (product.enamelColor && product.enamelColor.trim()) {
                                 mfs.push({ ownerId: product.shopifyProductId, namespace: "custom", key: "enamel_color", value: product.enamelColor.trim(), type: "single_line_text_field" });
@@ -913,6 +917,50 @@ class ShopifyService {
                 error: error.response?.data?.errors ? JSON.stringify(error.response.data.errors) : error.message
             };
         }
+    }
+
+    // Two-way sync (Shopify -> plugin): read product metafields from Shopify and write the
+    // scalar fields back into the plugin DB. Gemstones and pricing are intentionally NOT pulled
+    // (the display metafields cannot rebuild the plugin's detailed gemstone/pricing records).
+    async pullMetafieldsToDb(shopId) {
+        const groups = await prisma.makingGroup.findMany({ where: { shopId } });
+        const groupByName = {};
+        groups.forEach(g => { groupByName[g.name.trim().toLowerCase()] = g.id; });
+
+        const query = `query($cursor:String){ products(first:50, after:$cursor){ pageInfo{ hasNextPage endCursor } edges{ node{ id metafields(first:25, namespace:"custom"){ edges{ node{ key value } } } } } } }`;
+        let cursor = null, scanned = 0, updated = 0;
+        do {
+            const res = await axios_1.default.post(
+                `https://${this.domain}/admin/api/2024-01/graphql.json`,
+                { query, variables: { cursor } },
+                { headers: ShopifyService.getHeaders(this.accessToken) }
+            );
+            const conn = res.data?.data?.products;
+            if (!conn) break;
+            for (const edge of conn.edges) {
+                scanned++;
+                const gid = edge.node.id;
+                const numeric = gid.split('/').pop();
+                const mf = {};
+                (edge.node.metafields?.edges || []).forEach(x => { mf[x.node.key] = x.node.value; });
+
+                const data = {};
+                if (mf.gold_weight != null && mf.gold_weight !== '' && !isNaN(parseFloat(mf.gold_weight))) data.weightGrams = parseFloat(mf.gold_weight);
+                if (mf.metal_karat != null && mf.metal_karat !== '' && !isNaN(parseInt(mf.metal_karat))) data.karat = parseInt(mf.metal_karat);
+                if (mf.metal_color) data.metalColor = String(mf.metal_color);
+                if (mf.enamel_color) data.enamelColor = String(mf.enamel_color);
+                if (mf.enamel_weight != null && mf.enamel_weight !== '' && !isNaN(parseFloat(mf.enamel_weight))) data.enamelWeightGrams = parseFloat(mf.enamel_weight);
+                if (mf.making_group) { const gidLocal = groupByName[String(mf.making_group).trim().toLowerCase()]; if (gidLocal) data.makingGroupId = gidLocal; }
+                if (Object.keys(data).length === 0) continue;
+
+                const prod = await prisma.product.findFirst({
+                    where: { shopId, OR: [{ shopifyProductId: gid }, { shopifyProductId: numeric }] }
+                });
+                if (prod) { await prisma.product.update({ where: { id: prod.id }, data }); updated++; }
+            }
+            cursor = conn.pageInfo?.hasNextPage ? conn.pageInfo.endCursor : null;
+        } while (cursor);
+        return { scanned, updated };
     }
 }
 exports.ShopifyService = ShopifyService;

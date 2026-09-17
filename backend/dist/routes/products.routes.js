@@ -1309,6 +1309,26 @@ router.post('/sync', async (req, res) => {
     }
 });
 
+// Two-way sync (Shopify -> plugin): pull metafield edits back into the plugin DB.
+// Scalar fields only (gold weight, karat, metal color, enamel color/weight, making group);
+// gemstones/pricing are not pulled (the display metafields can't rebuild the source records).
+router.post('/pull-from-shopify', async (req, res) => {
+    try {
+        const shopDomain = res.locals.shopify.session.shop;
+        const shop = await prisma.shop.findUnique({ where: { domain: shopDomain } });
+        if (!shop) {
+            return res.status(404).json({ error: 'Shop not found' });
+        }
+        const { ShopifyService } = require("../services/shopify.service");
+        const shopifyService = await ShopifyService.forShop(shop.domain);
+        const result = await shopifyService.pullMetafieldsToDb(shop.id);
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('Error pulling metafields from Shopify:', error);
+        res.status(500).json({ error: 'Failed to pull from Shopify' });
+    }
+});
+
 // Get Sync Status
 router.get('/sync/status', async (req, res) => {
     try {

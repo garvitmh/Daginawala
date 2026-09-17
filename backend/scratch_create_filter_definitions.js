@@ -10,6 +10,7 @@ const defs = [
   { name: 'Stone Weight (ct)', namespace: 'custom', key: 'stone_weight', type: 'number_decimal', ownerType: 'PRODUCT' },
   { name: 'Gemstone Type', namespace: 'custom', key: 'gemstone_type', type: 'list.single_line_text_field', ownerType: 'PRODUCT' },
   { name: 'Metal Purity (Karat)', namespace: 'custom', key: 'metal_karat', type: 'number_integer', ownerType: 'PRODUCT' },
+  { name: 'Metal Color', namespace: 'custom', key: 'metal_color', type: 'single_line_text_field', ownerType: 'PRODUCT' },
   { name: 'Enamel Color', namespace: 'custom', key: 'enamel_color', type: 'single_line_text_field', ownerType: 'PRODUCT' },
   { name: 'Enamel Weight (g)', namespace: 'custom', key: 'enamel_weight', type: 'number_decimal', ownerType: 'PRODUCT' },
   { name: 'Making Group', namespace: 'custom', key: 'making_group', type: 'single_line_text_field', ownerType: 'PRODUCT' },

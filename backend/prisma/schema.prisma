@@ -189,6 +189,7 @@ model Product {
   status                        String?
   weightGrams                   Float?
   metal                         String?
+  metalColor                    String?
   karat                         Int?
   stoneWeightCarat              Float?
   stoneType                     String?
@@ -252,6 +253,7 @@ model Product {
   maxOffersPerUser              Int?
   enableOffer                   Boolean           @default(false)
   enableBreakdown               Boolean           @default(true)
+  enableMakingOffer             Boolean           @default(true)
   priceHistory                  PriceHistory[]
   makingGroup                   MakingGroup?      @relation(fields: [makingGroupId], references: [id])
   shop                          Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)

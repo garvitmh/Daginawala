@@ -47,6 +47,12 @@ class PricingService {
             makingChargeType = settings.defaultMakingChargeType || 'per_gram';
             makingChargeValue = settings.defaultMakingChargeValue ?? 1500;
         }
+        // Client rule: when a product's making charge resolves to 0 but it has a Making Group
+        // assigned, use the group's rate instead of charging nothing.
+        if ((!makingChargeValue || makingChargeValue === 0) && product.makingGroup && product.makingGroup.value) {
+            makingChargeType = product.makingGroup.type || 'per_gram';
+            makingChargeValue = product.makingGroup.value;
+        }
         // Use product-level gstPct first, fallback to shop settings
         const gstPct = (product.gstPct !== undefined && product.gstPct !== null) ? product.gstPct : (settings?.defaultGstPct ?? 3);
         
