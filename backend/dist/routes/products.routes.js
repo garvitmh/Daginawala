@@ -349,6 +349,7 @@ router.put('/:id', async (req, res) => {
         const {
             weightGrams,
             metal,
+            metalColor,
             karat,
             gemstoneType,
             gemstoneCut,
@@ -390,6 +391,7 @@ router.put('/:id', async (req, res) => {
         const updateData = {
             weightGrams: weightGrams !== undefined ? weightGrams : existingProduct.weightGrams,
             metal: metal !== undefined ? metal : existingProduct.metal,
+            metalColor: metalColor !== undefined ? metalColor : existingProduct.metalColor,
             karat: karat !== undefined ? karat : existingProduct.karat,
             gemstoneType: gemstoneType !== undefined ? gemstoneType : existingProduct.gemstoneType,
             gemstoneCut: gemstoneCut !== undefined ? gemstoneCut : existingProduct.gemstoneCut,

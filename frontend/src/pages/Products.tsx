@@ -57,6 +57,7 @@ interface Product {
     status?: string;
     weightGrams?: number;
     metal?: string;
+    metalColor?: string;
     karat?: number;
     gemstoneType?: string;
     gemstoneCut?: string;
@@ -107,6 +108,8 @@ interface Product {
     maxOffersPerUser?: number;
     enableOffer?: boolean;
     enableBreakdown?: boolean;
+    enableMakingOffer?: boolean;
+    priceBreakdownHtml?: string | null;
 }
 
 interface MakingGroup {
@@ -198,6 +201,7 @@ export default function Products() {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [editWeight, setEditWeight] = useState('');
     const [editMetal, setEditMetal] = useState('');
+    const [editMetalColor, setEditMetalColor] = useState('');
     const [editKarat, setEditKarat] = useState('');
     const [editGemstoneType, setEditGemstoneType] = useState('');
     const [editGemstoneCut, setEditGemstoneCut] = useState('');
@@ -211,6 +215,7 @@ export default function Products() {
     const [editMaxOffersPerUser, setEditMaxOffersPerUser] = useState('');
     const [editEnableOffer, setEditEnableOffer] = useState(false);
     const [editEnableBreakdown, setEditEnableBreakdown] = useState(true);
+    const [editEnableMakingOffer, setEditEnableMakingOffer] = useState(true);
 
     const [editGemstoneCaratRange, setEditGemstoneCaratRange] = useState('');
     const [editStonePieces, setEditStonePieces] = useState('');
@@ -305,7 +310,7 @@ export default function Products() {
             });
 
             if (response.data.success) {
-                setSuccessMessage(`✓ Pushed ${response.data.successCount} products to Shopify!`);
+                setSuccessMessage(` Pushed ${response.data.successCount} products to Shopify!`);
                 setSelectedProducts([]); // Clear selection
                 await fetchProducts(); // Refresh to show updated lastPushedAt
                 setTimeout(() => setSuccessMessage(''), 5000);
@@ -441,7 +446,7 @@ export default function Products() {
             });
 
             if (response.data.success) {
-                setSuccessMessage(`✓ Updated ${response.data.updatedCount} products in database${bulkSyncToShopify ? ` and synced ${response.data.syncedCount || 0} to Shopify` : ''}!`);
+                setSuccessMessage(` Updated ${response.data.updatedCount} products in database${bulkSyncToShopify ? ` and synced ${response.data.syncedCount || 0} to Shopify` : ''}!`);
                 setShowBulkEditModal(false);
                 setSelectedProducts([]);
                 await fetchProducts();
@@ -479,7 +484,7 @@ export default function Products() {
             if (response.data.success) {
                 const label = field === 'enableBreakdown' ? 'Price Breakdown' : 'Make an Offer';
                 const status = value ? 'ENABLED' : 'DISABLED';
-                setSuccessMessage(`✓ ${label} ${status} for ${response.data.updatedCount} products and synced to Shopify!`);
+                setSuccessMessage(` ${label} ${status} for ${response.data.updatedCount} products and synced to Shopify!`);
                 setSelectedProducts([]);
                 await fetchProducts();
                 setTimeout(() => setSuccessMessage(''), 5000);
@@ -507,7 +512,7 @@ export default function Products() {
             if (response.data.success) {
                 const label = field === 'enableBreakdown' ? 'Price Breakdown' : 'Make an Offer';
                 const status = newValue ? 'ENABLED' : 'DISABLED';
-                setSuccessMessage(`✓ ${label} ${status} and synced to Shopify!`);
+                setSuccessMessage(` ${label} ${status} and synced to Shopify!`);
                 await fetchProducts();
                 setTimeout(() => setSuccessMessage(''), 3000);
             }
@@ -529,7 +534,7 @@ export default function Products() {
             });
 
             if (response.data.success && response.data.successCount > 0) {
-                setSuccessMessage(`✓ Pushed ${sku} to Shopify!`);
+                setSuccessMessage(` Pushed ${sku} to Shopify!`);
                 await fetchProducts(); // Refresh to show updated lastPushedAt
                 setTimeout(() => setSuccessMessage(''), 3000);
             } else {
@@ -980,12 +985,25 @@ export default function Products() {
         await triggerSync();
     };
 
+    // Two-way sync: pull metafield edits made in Shopify back into the plugin.
+    const handlePullFromShopify = async () => {
+        try {
+            const res = await api.post('/products/pull-from-shopify', {});
+            const d = res.data || {};
+            window.alert(`Pulled from Shopify. Products updated: ${d.updated ?? 0} (scanned ${d.scanned ?? 0}).`);
+            await triggerSync();
+        } catch (e) {
+            window.alert('Failed to pull from Shopify. Check server logs.');
+        }
+    };
+
 
 
     const handleEditProduct = (product: Product) => {
         setEditingProduct(product);
         setEditWeight(product.weightGrams?.toString() || '');
         setEditMetal(product.metal || '');
+        setEditMetalColor(product.metalColor || '');
         setEditKarat(product.karat?.toString() || '');
         setEditGemstoneType(product.gemstoneType || '');
         setEditGemstoneCut(product.gemstoneCut || '');
@@ -1023,6 +1041,7 @@ export default function Products() {
         setEditMaxOffersPerUser(product.maxOffersPerUser?.toString() || '');
         setEditEnableOffer(product.enableOffer || false);
         setEditEnableBreakdown(product.enableBreakdown !== false);
+        setEditEnableMakingOffer(product.enableMakingOffer !== false);
 
 
         setEditEnamelColor(product.enamelColor || '');
@@ -1036,8 +1055,19 @@ export default function Products() {
 
         setShowEditModal(true);
 
-        // Fetch price breakdown - product already has gemstones loaded
-        if (product.weightGrams && product.metal) {
+        // Load price breakdown instantly if cached on product, otherwise fetch
+        if (product.priceBreakdownHtml) {
+            try {
+                const parsed = JSON.parse(product.priceBreakdownHtml);
+                setPriceBreakdown(parsed);
+            } catch (e) {
+                if (product.weightGrams && product.metal) {
+                    fetchPriceBreakdown(product);
+                } else {
+                    setPriceBreakdown(null);
+                }
+            }
+        } else if (product.weightGrams && product.metal) {
             fetchPriceBreakdown(product);
         } else {
             setPriceBreakdown(null);
@@ -1052,6 +1082,7 @@ export default function Products() {
             await api.put(`/products/${editingProduct.id}`, {
                 weightGrams: editWeight ? parseFloat(editWeight) : null,
                 metal: editMetal || null,
+                metalColor: editMetalColor || null,
                 karat: editKarat ? parseInt(editKarat) : null,
                 gemstoneType: editGemstoneType || null,
                 gemstoneCut: editGemstoneCut || null,
@@ -1083,6 +1114,7 @@ export default function Products() {
                 maxOffersPerUser: editMaxOffersPerUser ? parseInt(String(editMaxOffersPerUser), 10) : null,
                 enableOffer: editEnableOffer,
                 enableBreakdown: editEnableBreakdown,
+                enableMakingOffer: editEnableMakingOffer,
                 enamelColor: editEnamelColor || null,
 
                 enamelWeightGrams: editEnamelWeightGrams ? parseFloat(editEnamelWeightGrams) : null,
@@ -1406,18 +1438,16 @@ export default function Products() {
                     </InlineStack>
                 </div>,
                 '', '', '', '', '',
-                groupProducts.length === 1 ? (
-                    <div style={{ minWidth: '110px', display: 'flex', gap: '4px' }}>
-                        <Button
-                            size="slim"
-                            icon={UploadIcon}
-                            onClick={() => handlePushSingleProduct(representative.id, representative.sku)}
-                            accessibilityLabel="Push to Shopify"
-                        />
-                        <Button size="slim" icon={EditIcon} onClick={() => handleEditProduct(representative)} accessibilityLabel="Edit Product" />
-                        <Button size="slim" tone="critical" icon={DeleteIcon} onClick={() => handleDeleteProduct(representative.id)} accessibilityLabel="Delete Product" />
-                    </div>
-                ) : '',
+                <div style={{ minWidth: '110px', display: 'flex', gap: '4px' }}>
+                    <Button
+                        size="slim"
+                        icon={UploadIcon}
+                        onClick={() => handlePushSingleProduct(representative.id, representative.sku)}
+                        accessibilityLabel="Push to Shopify"
+                    />
+                    <Button size="slim" icon={EditIcon} onClick={() => handleEditProduct(representative)} accessibilityLabel="Edit Product" />
+                    <Button size="slim" tone="critical" icon={DeleteIcon} onClick={() => handleDeleteProduct(representative.id)} accessibilityLabel="Delete Product" />
+                </div>,
             ]);
 
             if (isExpanded) {
@@ -1509,6 +1539,10 @@ export default function Products() {
                 loading,
             }}
             secondaryActions={[
+                {
+                    content: 'Pull from Shopify',
+                    onAction: handlePullFromShopify,
+                },
                 {
                     content: 'Download Template',
                     onAction: async () => {
@@ -1826,6 +1860,14 @@ export default function Products() {
                             ]}
                             value={editMetal}
                             onChange={setEditMetal}
+                        />
+
+                        <TextField
+                            label="Metal Color"
+                            value={editMetalColor}
+                            onChange={setEditMetalColor}
+                            placeholder="e.g. Yellow / White / Rose"
+                            autoComplete="off"
                         />
 
                         {editMetal === 'gold' && (
@@ -2177,6 +2219,13 @@ export default function Products() {
                                 />
 
                                 <Checkbox
+                                    label="Allow Making Charge Negotiation"
+                                    checked={editEnableMakingOffer}
+                                    onChange={setEditEnableMakingOffer}
+                                    helpText="When enabled, customer can select making charge offer bubbles in the Make An Offer modal."
+                                />
+
+                                <Checkbox
                                     label="Enable Price Breakdown Table"
                                     checked={editEnableBreakdown}
                                     onChange={setEditEnableBreakdown}
@@ -2286,7 +2335,7 @@ export default function Products() {
                                                                             </div>
                                                                             {gem.rateNotSet ? (
                                                                                 <div style={{ color: '#d72c0d', fontSize: '12px', fontWeight: 600 }}>
-                                                                                    ⚠️ Rate not set - Add in Rates page
+                                                                                    ️ Rate not set - Add in Rates page
                                                                                 </div>
                                                                             ) : gem.weight ? (
                                                                                 <div style={{ color: '#6d7175', fontSize: '12px' }}>
@@ -2669,7 +2718,7 @@ export default function Products() {
                         {!gemstoneModalPricingType && gemstoneModalType && !gemstoneModalIsCustom && (
                             <div style={{ padding: '12px', background: '#fef3cd', border: '1px solid #f0e5a1', borderRadius: '4px' }}>
                                 <Text as="p" variant="bodyMd" tone="caution">
-                                    ⚠️ No rate found for this gemstone combination. Please add a rate in the Rates page first.
+                                    ️ No rate found for this gemstone combination. Please add a rate in the Rates page first.
                                 </Text>
                             </div>
                         )}
