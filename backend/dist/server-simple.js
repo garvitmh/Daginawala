@@ -2288,14 +2288,22 @@ app.put('/api/settings', async (req, res) => {
         if (!shop) {
             return res.status(404).json({ error: 'Shop not found' });
         }
-        // FIX BUG-19: Whitelist allowed fields to prevent mass assignment vulnerability
+        // Whitelist allowed fields to prevent mass assignment (id/shopId/timestamps stay protected).
+        // Must cover every editable ShopSettings column, otherwise the value is silently dropped
+        // while the API still reports success (this is what broke Making Charge Bubbles).
         const allowedFields = [
+            'defaultMakingPerGram',
             'defaultMakingChargeType', 'defaultMakingChargeValue',
             'defaultWastagePct', 'defaultGstPct', 'defaultDiscount',
             'defaultDiscountType', 'defaultMetalDiscountType', 'defaultMetalDiscountValue',
             'defaultMakingDiscountType', 'defaultMakingDiscountValue',
             'defaultGemstoneDiscountType', 'defaultGemstoneDiscountValue',
-            'autoSyncEnabled', 'syncIntervalMinutes'
+            'defaultEnamelDiscountType', 'defaultEnamelDiscountValue',
+            'rateUpdateMode', 'rateSource', 'rateSourceUrl', 'webhookUrl',
+            'emailNotifications', 'notificationEmail',
+            'whatsappNotifications', 'notificationWhatsapp',
+            'offerEnabled', 'makingChargeBubbles', 'stoneDiscountOptions',
+            'minMarginAutoReject', 'maxMarginAutoApprove'
         ];
         const sanitizedData = {};
         for (const key of allowedFields) {
