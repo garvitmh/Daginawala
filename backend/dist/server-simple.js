@@ -855,28 +855,30 @@ app.get('/api/products/for-assignment', async (req, res) => {
                 where.shopifyProductId = { in: [] };
             }
         }
-        const [products, total] = await Promise.all([
-            prisma.product.findMany({
-                where,
-                skip,
-                take: parseInt(limit),
-                orderBy: { title: 'asc' },
-                select: {
-                    id: true,
-                    sku: true,
-                    title: true,
-                    imageUrl: true,
-                    makingGroupId: true,
-                    makingGroup: {
-                        select: {
-                            id: true,
-                            name: true,
-                        }
+        // Products already in this group come first, then the rest (each alphabetical).
+        // ponytail: sorts all matching products in memory; fine for a few thousand, move to raw SQL ORDER BY CASE if the catalogue grows past that.
+        const allMatching = await prisma.product.findMany({
+            where,
+            orderBy: { title: 'asc' },
+            select: {
+                id: true,
+                sku: true,
+                title: true,
+                imageUrl: true,
+                makingGroupId: true,
+                makingGroup: {
+                    select: {
+                        id: true,
+                        name: true,
                     }
-                },
-            }),
-            prisma.product.count({ where }),
-        ]);
+                }
+            },
+        });
+        if (excludeGroupId) {
+            allMatching.sort((a, b) => (b.makingGroupId === excludeGroupId) - (a.makingGroupId === excludeGroupId));
+        }
+        const total = allMatching.length;
+        const products = allMatching.slice(skip, skip + parseInt(limit));
         // Transform products to include assignment status
         const productsWithStatus = products.map(product => ({
             ...product,

@@ -207,14 +207,16 @@ export default function MakingGroups() {
                 setOriginalAssignedIds(alreadyAssigned);
                 setSelectedProductIds(new Set(alreadyAssigned));
             } else {
-                // For page changes/searches, maintain selection state
-                const newSelected = new Set(selectedProductIds);
-                products.forEach((p: ProductForAssignment) => {
-                    if (p.assignedToCurrentGroup) {
-                        newSelected.add(p.id);
-                    }
-                });
-                setSelectedProductIds(newSelected);
+                // For page changes/searches: group members seen for the first time are
+                // tracked as original + selected, so unticking them later removes them.
+                // Members already tracked keep whatever tick state the user left them in.
+                const newlySeen = products
+                    .filter((p: ProductForAssignment) => p.assignedToCurrentGroup && !originalAssignedIds.has(p.id))
+                    .map((p: ProductForAssignment) => p.id);
+                if (newlySeen.length > 0) {
+                    setOriginalAssignedIds(prev => new Set([...prev, ...newlySeen]));
+                    setSelectedProductIds(prev => new Set([...prev, ...newlySeen]));
+                }
             }
         } catch (err: any) {
             console.error('Error fetching products for assignment:', err);

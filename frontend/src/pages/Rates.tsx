@@ -526,17 +526,13 @@ export default function Rates() {
                             <Select
                                 label="Karat"
                                 options={[
-                                    { label: '24K (Pure Gold)', value: '24' },
-                                    { label: '23K', value: '23' },
-                                    { label: '22K (Crown Gold)', value: '22' },
-                                    { label: '21K', value: '21' },
-                                    { label: '20K', value: '20' },
-                                    { label: '18K (75%)', value: '18' },
-                                    { label: '16K', value: '16' },
-                                    { label: '14K (58.5%)', value: '14' },
-                                    { label: '12K (50%)', value: '12' },
-                                    { label: '10K (41.7%)', value: '10' },
-                                    { label: '9K (37.5%)', value: '9' },
+                                    { label: '24K (999 · 99.9%)', value: '24' },
+                                    { label: '22K (916 · 91.6%)', value: '22' },
+                                    { label: '20K (833 · 83.3%)', value: '20' },
+                                    { label: '18K (750 · 75.0%)', value: '18' },
+                                    { label: '14K (585 · 58.5%)', value: '14' },
+                                    { label: '10K (417 · 41.7%)', value: '10' },
+                                    { label: '9K (375 · 37.5%)', value: '9' },
                                 ]}
                                 value={String(metalEditData.karat)}
                                 onChange={(value) => setMetalEditData({ ...metalEditData, karat: parseInt(value) })}
