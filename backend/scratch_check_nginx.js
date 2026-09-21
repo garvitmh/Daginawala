@@ -5,4 +5,4 @@ conn.on('ready', () => {
     stream.on('data', d => process.stdout.write(d));
     stream.on('close', () => conn.end());
   });
-}).connect({ host: '187.127.149.200', port: 22, username: 'root', password: 'Digital@9987' });
+}).connect({ host: '187.127.149.200', port: 22, username: 'root', password: process.env.SSH_PASS });

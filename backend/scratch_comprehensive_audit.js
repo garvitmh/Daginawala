@@ -7,7 +7,7 @@ const sshConfig = {
     host: '187.127.149.200',
     port: 22,
     username: 'root',
-    password: process.env.VPS_PASSWORD || 'Digital@9987'
+    password: process.env.VPS_PASSWORD || process.env.SSH_PASS
 };
 
 function executeRemoteCommand(conn, cmd) {

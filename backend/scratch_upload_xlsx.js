@@ -5,7 +5,7 @@ const config = {
   host: '187.127.149.200',
   port: 22,
   username: 'root',
-  password: 'Digital@9987',
+  password: process.env.SSH_PASS,
   readyTimeout: 15000
 };
 

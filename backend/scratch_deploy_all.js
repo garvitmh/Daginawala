@@ -6,42 +6,38 @@ const config = {
   host: '187.127.149.200',
   port: 22,
   username: 'root',
-  password: 'Digital@9987',
+  password: process.env.SSH_PASS,
   readyTimeout: 15000
 };
 
 const filesToUpload = [
   {
     local: path.join(__dirname, 'dist', 'services', 'shopify.service.js'),
-    remote: '/root/gemini-app/backend/dist/services/shopify.service.js'
+    remote: '/var/www/gemini-app/backend/dist/services/shopify.service.js'
   },
   {
     local: path.join(__dirname, 'dist', 'routes', 'offers.routes.js'),
-    remote: '/root/gemini-app/backend/dist/routes/offers.routes.js'
+    remote: '/var/www/gemini-app/backend/dist/routes/offers.routes.js'
   },
   {
     local: path.join(__dirname, 'dist', 'routes', 'products.routes.js'),
-    remote: '/root/gemini-app/backend/dist/routes/products.routes.js'
+    remote: '/var/www/gemini-app/backend/dist/routes/products.routes.js'
   },
   {
     local: path.join(__dirname, 'dist', 'server-simple.js'),
-    remote: '/root/gemini-app/backend/dist/server-simple.js'
+    remote: '/var/www/gemini-app/backend/dist/server-simple.js'
   },
   {
     local: path.join(__dirname, 'dist', 'services', 'pricing.service.js'),
-    remote: '/root/gemini-app/backend/dist/services/pricing.service.js'
+    remote: '/var/www/gemini-app/backend/dist/services/pricing.service.js'
   },
   {
     local: path.join(__dirname, 'dist', 'services', 'email.service.js'),
-    remote: '/root/gemini-app/backend/dist/services/email.service.js'
+    remote: '/var/www/gemini-app/backend/dist/services/email.service.js'
   },
   {
     local: path.join(__dirname, 'prisma', 'schema.prisma'),
-    remote: '/root/gemini-app/backend/prisma/schema.prisma'
-  },
-  {
-    local: path.join(__dirname, '..', 'shopify-liquid-templates', 'gemini-price-breakdown-enhanced.liquid'),
-    remote: '/root/gemini-app/shopify-liquid-templates/gemini-price-breakdown-enhanced.liquid'
+    remote: '/var/www/gemini-app/backend/prisma/schema.prisma'
   }
 ];
 
@@ -85,7 +81,7 @@ conn.on('ready', () => {
     uploadNext();
     
     function runDbPush() {
-      conn.exec('cd /root/gemini-app/backend && npx prisma db push --accept-data-loss', (errExec, stream) => {
+      conn.exec('cd /var/www/gemini-app/backend && npx prisma db push --accept-data-loss', (errExec, stream) => {
         if (errExec) {
           console.error('DB push error:', errExec);
           conn.end();
