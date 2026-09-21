@@ -533,6 +533,10 @@ export default function Rates() {
                                     { label: '14K (585 · 58.5%)', value: '14' },
                                     { label: '10K (417 · 41.7%)', value: '10' },
                                     { label: '9K (375 · 37.5%)', value: '9' },
+                                    // Keep a legacy karat (e.g. 23K) visible when editing an old rate
+                                    ...(![24, 22, 20, 18, 14, 10, 9].includes(Number(metalEditData.karat))
+                                        ? [{ label: `${metalEditData.karat}K (legacy)`, value: String(metalEditData.karat) }]
+                                        : []),
                                 ]}
                                 value={String(metalEditData.karat)}
                                 onChange={(value) => setMetalEditData({ ...metalEditData, karat: parseInt(value) })}

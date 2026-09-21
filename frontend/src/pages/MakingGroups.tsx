@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
     Page,
     Card,
@@ -77,6 +77,7 @@ export default function MakingGroups() {
     const [assignTotal, setAssignTotal] = useState(0);
     const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
     const [originalAssignedIds, setOriginalAssignedIds] = useState<Set<string>>(new Set());
+    const seenMemberIdsRef = useRef<Set<string>>(new Set());
 
     useEffect(() => {
         fetchMakingGroups();
@@ -175,6 +176,7 @@ export default function MakingGroups() {
         setAssignPage(1);
         setSelectedProductIds(new Set());
         setOriginalAssignedIds(new Set());
+        seenMemberIdsRef.current = new Set();
         setShowAssignModal(true);
         await fetchProductsForAssignment(group.id, 1, '');
     };
@@ -197,26 +199,16 @@ export default function MakingGroups() {
             setAssignTotalPages(response.data.pagination?.pages || 1);
             setAssignTotal(response.data.pagination?.total || 0);
 
-            // On first load, track which products are already assigned to this group
-            if (page === 1 && !search) {
-                const alreadyAssigned = new Set<string>(
-                    products
-                        .filter((p: ProductForAssignment) => p.assignedToCurrentGroup)
-                        .map((p: ProductForAssignment) => p.id)
-                );
-                setOriginalAssignedIds(alreadyAssigned);
-                setSelectedProductIds(new Set(alreadyAssigned));
-            } else {
-                // For page changes/searches: group members seen for the first time are
-                // tracked as original + selected, so unticking them later removes them.
-                // Members already tracked keep whatever tick state the user left them in.
-                const newlySeen = products
-                    .filter((p: ProductForAssignment) => p.assignedToCurrentGroup && !originalAssignedIds.has(p.id))
-                    .map((p: ProductForAssignment) => p.id);
-                if (newlySeen.length > 0) {
-                    setOriginalAssignedIds(prev => new Set([...prev, ...newlySeen]));
-                    setSelectedProductIds(prev => new Set([...prev, ...newlySeen]));
-                }
+            // Group members seen for the first time (any page/search/collection) are tracked
+            // as original + selected, so unticking them later removes them. Members already
+            // seen keep whatever tick state the user left them in. Reset when the modal opens.
+            const newlySeen: string[] = products
+                .filter((p: ProductForAssignment) => p.assignedToCurrentGroup && !seenMemberIdsRef.current.has(p.id))
+                .map((p: ProductForAssignment) => p.id);
+            if (newlySeen.length > 0) {
+                newlySeen.forEach(id => seenMemberIdsRef.current.add(id));
+                setOriginalAssignedIds(prev => new Set([...prev, ...newlySeen]));
+                setSelectedProductIds(prev => new Set([...prev, ...newlySeen]));
             }
         } catch (err: any) {
             console.error('Error fetching products for assignment:', err);
